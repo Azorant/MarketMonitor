@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MarketMonitor.Bot", "MarketMonitor.Bot\MarketMonitor.Bot.csproj", "{91A723BE-C26B-4397-8D40-D979EE8BED41}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MarketMonitor.Database", "MarketMonitor.Database\MarketMonitor.Database.csproj", "{8E792EC8-9CC3-4E6B-8FA1-38AB86FD7517}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MarketMonitor.Startup", "MarketMonitor.Startup\MarketMonitor.Startup.csproj", "{362B70E5-7F6F-4FFD-982F-45B1BDB3FCA9}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MarketMonitor.Website", "MarketMonitor.Website\MarketMonitor.Website.csproj", "{427A343F-C87B-4C3D-AE3E-CA88D89B3B24}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{91A723BE-C26B-4397-8D40-D979EE8BED41}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{91A723BE-C26B-4397-8D40-D979EE8BED41}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{91A723BE-C26B-4397-8D40-D979EE8BED41}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{91A723BE-C26B-4397-8D40-D979EE8BED41}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8E792EC8-9CC3-4E6B-8FA1-38AB86FD7517}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8E792EC8-9CC3-4E6B-8FA1-38AB86FD7517}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8E792EC8-9CC3-4E6B-8FA1-38AB86FD7517}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8E792EC8-9CC3-4E6B-8FA1-38AB86FD7517}.Release|Any CPU.Build.0 = Release|Any CPU
+		{362B70E5-7F6F-4FFD-982F-45B1BDB3FCA9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{362B70E5-7F6F-4FFD-982F-45B1BDB3FCA9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{362B70E5-7F6F-4FFD-982F-45B1BDB3FCA9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{362B70E5-7F6F-4FFD-982F-45B1BDB3FCA9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{427A343F-C87B-4C3D-AE3E-CA88D89B3B24}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{427A343F-C87B-4C3D-AE3E-CA88D89B3B24}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{427A343F-C87B-4C3D-AE3E-CA88D89B3B24}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{427A343F-C87B-4C3D-AE3E-CA88D89B3B24}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

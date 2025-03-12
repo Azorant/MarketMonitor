@@ -398,3 +398,4 @@ FodyWeavers.xsd
 *.sln.iml
 
 .env
+MarketMonitor.Database/appsettings.development.json
