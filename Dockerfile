@@ -6,21 +6,22 @@ ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
 FROM mcr.microsoft.com/dotnet/sdk:9.0-alpine AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["Template.sln", "."]
-COPY ["Template.Bot/Template.Bot.csproj", "Template.Bot/"]
-COPY ["Template.Database/Template.Database.csproj", "Template.Database/"]
-COPY ["Template.Startup/Template.Startup.csproj", "Template.Startup/"]
-COPY ["Template.Website/Template.Website.csproj", "Template.Website/"]
+COPY ["MarketMonitor.sln", "."]
+COPY ["MarketMonitor.Bot/MarketMonitor.Bot.csproj", "MarketMonitor.Bot/"]
+COPY ["MarketMonitor.Database/MarketMonitor.Database.csproj", "MarketMonitor.Database/"]
+COPY ["MarketMonitor.Startup/MarketMonitor.Startup.csproj", "MarketMonitor.Startup/"]
+COPY ["MarketMonitor.Website/MarketMonitor.Website.csproj", "MarketMonitor.Website/"]
 RUN dotnet restore
 COPY . .
-WORKDIR "/src/Template.Startup"
-RUN dotnet build "Template.Startup.csproj" -c $BUILD_CONFIGURATION -o /app/build
+WORKDIR "/src/MarketMonitor.Startup"
+RUN dotnet build "MarketMonitor.Startup.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "Template.Startup.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "MarketMonitor.Startup.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "Template.Startup.dll"]
+EXPOSE 5123
+ENTRYPOINT ["dotnet", "MarketMonitor.Startup.dll"]

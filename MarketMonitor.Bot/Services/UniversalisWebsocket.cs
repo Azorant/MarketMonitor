@@ -19,6 +19,7 @@ public class UniversalisWebsocket
         this.serviceProvider = serviceProvider;
         this.cache = cache;
         client = new WebSocket("wss://universalis.app/api/ws");
+        client.SslConfiguration.EnabledSslProtocols = System.Security.Authentication.SslProtocols.Tls12;
 
         client.OnMessage += OnPacket;
         client.OnOpen += OnOpen;
@@ -71,10 +72,11 @@ public class UniversalisWebsocket
                         else
                         {
                             var updated = false;
+                            var relisted = false;
                             if (existing.IsRemoved)
                             {
                                 existing.IsRemoved = false;
-                                updated = true;
+                                relisted = true;
                             }
 
                             if (existing.Quantity != listing.Quantity)
@@ -89,9 +91,9 @@ public class UniversalisWebsocket
                                 updated = true;
                             }
 
-                            if (!updated)
+                            if (!updated && !relisted)
                                 continue;
-                            existing.IsNotified = false;
+                            if (updated) existing.IsNotified = false;
                             db.Update(existing);
                             changes = true;
                         }

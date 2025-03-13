@@ -1,0 +1,15 @@
+﻿version: '3'
+services:
+  marketmonitor:
+    container_name: marketmonitor
+    build:
+      dockerfile: Dockerfile
+      context: .
+      tags:
+        - marketmonitor
+    env_file:
+      - .env
+    ports:
+      - 5123:5123
+    restart: on-failure
+    
