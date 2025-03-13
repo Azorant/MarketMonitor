@@ -14,7 +14,7 @@ public class RetainerEntity
     /// ID obtained via universalis when verifying ownership of retainer
     /// </summary>
     [MaxLength(64)]
-    public required string Id { get; set; } = string.Empty;
+    public string Id { get; set; } = string.Empty;
     /// <summary>
     /// Owner ID
     /// </summary>

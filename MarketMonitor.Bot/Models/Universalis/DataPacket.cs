@@ -20,6 +20,10 @@ public class ListingData
     public string ListingId { get; set; }
     public string RetainerId { get; set; }
     public string RetainerName { get; set; }
+    /// <summary>
+    /// Not present when data from ws
+    /// </summary>
+    public int? WorldId { get; set; }
 }
 
 public class SaleData

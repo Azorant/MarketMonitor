@@ -32,8 +32,10 @@ public class BaseModule(DatabaseContext db) : InteractionModuleBase<SocketIntera
             await RespondAsync(embed: embed);
         }
     }
+    
+    internal Task SendSuccessAsync(string description, bool modify = false) => SendSuccessAsync("Success", description, modify);
 
-    internal async Task SendSuccessAsync(string description, bool modify = false)
+    internal async Task SendSuccessAsync(string title, string description, bool modify = false)
     {
         var embed = new EmbedBuilder()
             .WithTitle(":white_check_mark: Success")

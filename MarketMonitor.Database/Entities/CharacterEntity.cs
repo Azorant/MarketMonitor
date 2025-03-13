@@ -20,7 +20,9 @@ public class CharacterEntity
     public bool IsVerified { get; set; }
     public Guid? VerificationValue { get; set; } = Guid.NewGuid();
     public string DatacenterName { get; set; }
+    public int? NotificationRegionId { get; set; }
     
     public virtual DatacenterEntity Datacenter { get; set; }
+    public virtual WorldEntity? NotificationRegion { get; set; }
     public virtual ICollection<RetainerEntity> Retainers { get; set; }
 }

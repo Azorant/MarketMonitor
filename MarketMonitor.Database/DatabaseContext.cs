@@ -32,9 +32,7 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : DbCont
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<RetainerEntity>()
-            .HasKey(r => r.Name);
-        modelBuilder.Entity<RetainerEntity>()
-            .HasAlternateKey(r => r.Id);
+            .HasKey(r => new { r.Name, r.OwnerId });
 
         modelBuilder.Entity<CharacterEntity>()
             .HasKey(c => c.Id);
@@ -43,16 +41,16 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : DbCont
 
         modelBuilder.Entity<ListingEntity>()
             .HasKey(l => l.Id);
-        
+
         modelBuilder.Entity<ItemEntity>()
             .HasKey(i => i.Id);
 
         modelBuilder.Entity<DatacenterEntity>()
             .HasKey(d => d.Name);
-        
+
         modelBuilder.Entity<WorldEntity>()
             .HasKey(w => w.Id);
-        
+
         modelBuilder.Entity<PurchaseEntity>()
             .HasKey(p => p.Id);
     }

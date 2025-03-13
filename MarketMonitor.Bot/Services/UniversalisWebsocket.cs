@@ -28,8 +28,6 @@ public class UniversalisWebsocket
     {
         try
         {
-            // Task.Run(async () =>
-            // {
             var packet = Serializer.Deserialize<DataPacket>(args.RawData);
             if (packet == null) return;
             var db = serviceProvider.GetRequiredService<DatabaseContext>();
@@ -40,7 +38,7 @@ public class UniversalisWebsocket
             {
                 case "listings/add":
                 {
-                    // var trackedRetainers = await db.Retainers.Where(r => packet.Listings!.Select(l => l.RetainerId).Contains(r.Id)).AsNoTracking().ToListAsync();
+                    var retainers = new List<RetainerEntity>();
                     foreach (var listing in packet.Listings!)
                     {
                         var tracking = await cache.GetRetainer(listing.RetainerName);
@@ -48,6 +46,14 @@ public class UniversalisWebsocket
                         var existing = await db.Listings.FirstOrDefaultAsync(l => l.Id == listing.ListingId);
                         if (existing == null)
                         {
+                            var retainer = retainers.FirstOrDefault(r => r.Id == listing.RetainerId);
+                            if (retainer == null)
+                            {
+                                retainer = await db.Retainers.AsNoTracking().FirstOrDefaultAsync(r => r.Id == listing.RetainerId);
+                                if (retainer == null) continue;
+                                retainers.Add(retainer);
+                            }
+
                             await db.AddAsync(new ListingEntity
                             {
                                 Id = listing.ListingId,
@@ -55,13 +61,37 @@ public class UniversalisWebsocket
                                 PricePerUnit = listing.PricePerUnit,
                                 Quantity = listing.Quantity,
                                 UpdatedAt = listing.LastReviewTime.ConvertTimestamp(),
-                                RetainerId = listing.RetainerId
+                                RetainerName = listing.RetainerName,
+                                RetainerOwnerId = retainer.OwnerId,
+                                WorldId = packet.World,
+                                IsHq = listing.Hq
                             });
                             changes = true;
                         }
-                        else if (existing.IsRemoved)
+                        else
                         {
-                            existing.IsRemoved = false;
+                            var updated = false;
+                            if (existing.IsRemoved)
+                            {
+                                existing.IsRemoved = false;
+                                updated = true;
+                            }
+
+                            if (existing.Quantity != listing.Quantity)
+                            {
+                                existing.Quantity = listing.Quantity;
+                                updated = true;
+                            }
+
+                            if (existing.PricePerUnit != listing.PricePerUnit)
+                            {
+                                existing.PricePerUnit = listing.PricePerUnit;
+                                updated = true;
+                            }
+
+                            if (!updated)
+                                continue;
+                            existing.IsNotified = false;
                             db.Update(existing);
                             changes = true;
                         }
@@ -71,7 +101,6 @@ public class UniversalisWebsocket
                 }
                 case "listings/remove":
                 {
-                    // var trackedRetainers = await db.Retainers.Where(r => packet.Listings!.Select(l => l.RetainerId).Contains(r.Id)).AsNoTracking().ToListAsync();
                     foreach (var listing in packet.Listings!)
                     {
                         var tracking = await cache.GetRetainer(listing.RetainerName);
@@ -88,8 +117,6 @@ public class UniversalisWebsocket
                 }
                 case "sales/add":
                 {
-                    // var trackedCharacters = await db.Characters.Where(c => packet.Sales!.Select(s => s.BuyerName).Distinct().Contains(c.Name)).AsNoTracking().ToListAsync();
-
                     foreach (var sale in packet.Sales!)
                     {
                         var (tracking, id) = await cache.GetCharacter(sale.BuyerName);
@@ -112,11 +139,6 @@ public class UniversalisWebsocket
             }
 
             if (changes) await db.SaveChangesAsync();
-            // await db.DisposeAsync();
-            // }).ContinueWith(t =>
-            // {
-            //     if (t.Exception != null) Log.Error(t.Exception, "Error while consuming universalis websocket");
-            // });
         }
         catch (Exception e)
         {

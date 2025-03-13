@@ -4,6 +4,7 @@ using MarketMonitor.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MarketMonitor.Database.Migrations
 {
     [DbContext(typeof(DatabaseContext))]
-    partial class DatabaseContextModelSnapshot : ModelSnapshot
+    [Migration("20250313044954_Add hq to listings")]
+    partial class Addhqtolistings
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -46,9 +49,6 @@ namespace MarketMonitor.Database.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("varchar(64)");
 
-                    b.Property<int?>("NotificationRegionId")
-                        .HasColumnType("int");
-
                     b.Property<Guid?>("VerificationValue")
                         .HasColumnType("char(36)");
 
@@ -57,8 +57,6 @@ namespace MarketMonitor.Database.Migrations
                     b.HasAlternateKey("Name");
 
                     b.HasIndex("DatacenterName");
-
-                    b.HasIndex("NotificationRegionId");
 
                     b.ToTable("Characters");
                 });
@@ -249,13 +247,7 @@ namespace MarketMonitor.Database.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("MarketMonitor.Database.Entities.WorldEntity", "NotificationRegion")
-                        .WithMany()
-                        .HasForeignKey("NotificationRegionId");
-
                     b.Navigation("Datacenter");
-
-                    b.Navigation("NotificationRegion");
                 });
 
             modelBuilder.Entity("MarketMonitor.Database.Entities.ListingEntity", b =>

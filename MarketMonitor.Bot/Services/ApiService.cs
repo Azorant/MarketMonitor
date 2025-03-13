@@ -17,7 +17,7 @@ public class ApiService(DatabaseContext db)
         HttpResponseMessage response = await client.GetAsync(new Uri(url));
         response.EnsureSuccessStatusCode();
         var str = await response.Content.ReadAsStringAsync();
-        return JsonSerializer.Deserialize<T>(str, new JsonSerializerOptions {PropertyNameCaseInsensitive = true})!;
+        return JsonSerializer.Deserialize<T>(str, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
     }
 
     public async Task<T> RequestUniversalis<T>(string path)
@@ -98,4 +98,6 @@ public class ApiService(DatabaseContext db)
         await db.SaveChangesAsync();
         Log.Information($"Updated {count:N0} items");
     }
+
+    public Task<MarketBoardDataResponse> FetchItem(int itemId, string region) => RequestUniversalis<MarketBoardDataResponse>($"/{region}/{itemId}");
 }

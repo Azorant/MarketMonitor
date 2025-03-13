@@ -78,7 +78,8 @@ try
         }))
         .AddHangfireServer()
         .AddSingleton<StatusJob>()
-        .AddTransient<CacheJob>();
+        .AddTransient<CacheJob>()
+        .AddTransient<MarketJob>();
 
     #endregion
 
@@ -108,7 +109,8 @@ try
     }
 
     RecurringJob.AddOrUpdate<StatusJob>("client_status", x => x.SetStatus(), "0,15,30,45 * * * * *");
-    RecurringJob.AddOrUpdate<CacheJob>("cache", x=>x.PopulateCache(), "*/15 * * * *");
+    RecurringJob.AddOrUpdate<CacheJob>("cache", x => x.PopulateCache(), "*/15 * * * *");
+    RecurringJob.AddOrUpdate<MarketJob>("market", x => x.Execute(), "*/10 * * * *");
 
     host.Run();
 }

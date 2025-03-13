@@ -4,6 +4,7 @@ using MarketMonitor.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MarketMonitor.Database.Migrations
 {
     [DbContext(typeof(DatabaseContext))]
-    partial class DatabaseContextModelSnapshot : ModelSnapshot
+    [Migration("20250313033818_Change retainer key")]
+    partial class Changeretainerkey
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -46,9 +49,6 @@ namespace MarketMonitor.Database.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("varchar(64)");
 
-                    b.Property<int?>("NotificationRegionId")
-                        .HasColumnType("int");
-
                     b.Property<Guid?>("VerificationValue")
                         .HasColumnType("char(36)");
 
@@ -57,8 +57,6 @@ namespace MarketMonitor.Database.Migrations
                     b.HasAlternateKey("Name");
 
                     b.HasIndex("DatacenterName");
-
-                    b.HasIndex("NotificationRegionId");
 
                     b.ToTable("Characters");
                 });
@@ -106,12 +104,6 @@ namespace MarketMonitor.Database.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("varchar(64)");
 
-                    b.Property<bool>("IsHq")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<bool>("IsNotified")
-                        .HasColumnType("tinyint(1)");
-
                     b.Property<bool>("IsRemoved")
                         .HasColumnType("tinyint(1)");
 
@@ -135,14 +127,9 @@ namespace MarketMonitor.Database.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime(6)");
 
-                    b.Property<int>("WorldId")
-                        .HasColumnType("int");
-
                     b.HasKey("Id");
 
                     b.HasIndex("ItemId");
-
-                    b.HasIndex("WorldId");
 
                     b.HasIndex("RetainerName", "RetainerOwnerId");
 
@@ -249,13 +236,7 @@ namespace MarketMonitor.Database.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("MarketMonitor.Database.Entities.WorldEntity", "NotificationRegion")
-                        .WithMany()
-                        .HasForeignKey("NotificationRegionId");
-
                     b.Navigation("Datacenter");
-
-                    b.Navigation("NotificationRegion");
                 });
 
             modelBuilder.Entity("MarketMonitor.Database.Entities.ListingEntity", b =>
@@ -263,12 +244,6 @@ namespace MarketMonitor.Database.Migrations
                     b.HasOne("MarketMonitor.Database.Entities.ItemEntity", "Item")
                         .WithMany()
                         .HasForeignKey("ItemId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("MarketMonitor.Database.Entities.WorldEntity", "World")
-                        .WithMany()
-                        .HasForeignKey("WorldId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -281,8 +256,6 @@ namespace MarketMonitor.Database.Migrations
                     b.Navigation("Item");
 
                     b.Navigation("Retainer");
-
-                    b.Navigation("World");
                 });
 
             modelBuilder.Entity("MarketMonitor.Database.Entities.PurchaseEntity", b =>

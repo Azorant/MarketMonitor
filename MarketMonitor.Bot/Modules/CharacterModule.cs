@@ -76,4 +76,45 @@ public class CharacterModule(DatabaseContext db, LodestoneService lodestone, Cac
         await cache.SetCharacter(character.Name, character.Id);
         await SendSuccessAsync("Character verified.\nIf you want to track sale history or get notifications when undercut on the market run {command}."); // TODO: Update command
     }
+
+    [Group("region", "Region commands")]
+    public class RegionModule(DatabaseContext db) : BaseModule(db)
+    {
+        [SlashCommand("notification", "Set the region used for undercut notifications")]
+        public async Task NotificationRegion([Autocomplete<WorldAutocompleteHandler>] int? world = null)
+        {
+            await DeferAsync(true);
+            var character = await GetCharacterAsync();
+            if (character == null)
+            {
+                await SendErrorAsync($"You don't have a character.\nSetup one with {await GetCommand("character", "setup")}");
+                return;
+            }
+
+            var worldName = string.Empty;
+
+            if (world == null)
+            {
+                character.NotificationRegionId = null;
+            }
+            else
+            {
+                var worldEntity = await db.Worlds.FindAsync(world);
+                if (worldEntity == null)
+                {
+                    await SendErrorAsync("Unknown world");
+                    return;
+                }
+
+                worldName = worldEntity.Name;
+                character.NotificationRegionId = worldEntity.Id;
+            }
+
+            db.Update(character);
+            await db.SaveChangesAsync();
+            await SendSuccessAsync(world == null
+                ? "Region removed. Undercut notifications will now be datacenter wide."
+                : $"Undercut notifications will now only be for listings in **{worldName}**.");
+        }
+    }
 }

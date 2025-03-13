@@ -11,8 +11,8 @@ public class CacheJob(DatabaseContext db, CacheService cache)
     {
         try
         {
-            var characters = await db.Characters.Select(c => new { Name = c.Name, Id = c.Id }).AsNoTracking().ToListAsync();
-            var retainers = await db.Retainers.Select(c => c.Name).AsNoTracking().ToListAsync();
+            var characters = await db.Characters.Where(x => x.IsVerified).Select(c => new { Name = c.Name, Id = c.Id }).AsNoTracking().ToListAsync();
+            var retainers = await db.Retainers.Where(x => x.IsVerified).Select(c => c.Name).AsNoTracking().ToListAsync();
 
             foreach (var character in characters)
             {
@@ -23,7 +23,7 @@ public class CacheJob(DatabaseContext db, CacheService cache)
             {
                 await cache.SetRetainer(retainer);
             }
-            
+
             Log.Information($"Cache populated with {characters.Count:N0} characters {retainers.Count:N0} retainers");
         }
         catch (Exception e)
