@@ -75,7 +75,7 @@ public class CharacterModule(DatabaseContext db, LodestoneService lodestone, Cac
         db.Update(character);
         await db.SaveChangesAsync();
         await cache.PopulateCache();
-        await SendSuccessAsync("Character verified.\nIf you want to track sale history or get notifications when undercut on the market run {command}."); // TODO: Update command
+        await SendSuccessAsync($"Character verified.\nIf you want to track sale history or get notifications when undercut on the market run {await GetCommand("retainer", "setup")}.");
     }
 
     [Group("region", "Region commands")]
