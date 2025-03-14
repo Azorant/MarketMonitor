@@ -1,10 +1,13 @@
 ﻿using Discord.WebSocket;
+using MarketMonitor.Bot.Services;
+using MarketMonitor.Database;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 
 namespace MarketMonitor.Bot.Jobs;
 
-public class StatusJob(IServiceProvider serviceProvider)
+public class StatusJob(DiscordSocketClient client, PrometheusService stats, DatabaseContext db)
 {
     private int lastStatus;
     private readonly string[] statuses = ["/help", "eris.gg"];
@@ -13,10 +16,11 @@ public class StatusJob(IServiceProvider serviceProvider)
     {
         try
         {
-            var client = serviceProvider.GetRequiredService<DiscordSocketClient>();
             await client.SetCustomStatusAsync(statuses[lastStatus]);
             lastStatus++;
             if (lastStatus == statuses.Length) lastStatus = 0;
+            stats.Latency.Set(client.Latency);
+            stats.TrackedListings.Set(await db.Listings.CountAsync());
         }
         catch (Exception e)
         {

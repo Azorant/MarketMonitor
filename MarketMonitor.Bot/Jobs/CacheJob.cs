@@ -5,10 +5,12 @@ using Serilog;
 
 namespace MarketMonitor.Bot.Jobs;
 
-public class CacheJob(DatabaseContext db, CacheService cache)
+public class CacheJob(DatabaseContext db, CacheService cache, PrometheusService stats)
 {
-    public async Task PopulateCache()
+    public async Task<(int, int)> PopulateCache()
     {
+        var characterCount = 0;
+        var retainerCount = 0;
         try
         {
             var characters = await db.Characters.Where(x => x.IsVerified).Select(c => new { Name = c.Name, Id = c.Id }).AsNoTracking().ToListAsync();
@@ -17,11 +19,13 @@ public class CacheJob(DatabaseContext db, CacheService cache)
             foreach (var character in characters)
             {
                 await cache.SetCharacter(character.Name, character.Id);
+                characterCount++;
             }
 
             foreach (var retainer in retainers)
             {
                 await cache.SetRetainer(retainer);
+                retainerCount++;
             }
 
             Log.Information($"Cache populated with {characters.Count:N0} characters {retainers.Count:N0} retainers");
@@ -30,5 +34,9 @@ public class CacheJob(DatabaseContext db, CacheService cache)
         {
             Log.Error(e, "Error populating cache");
         }
+
+        stats.TrackedCharacters.Set(characterCount);
+        stats.TrackedRetainers.Set(retainerCount);
+        return (characterCount, retainerCount);
     }
 }

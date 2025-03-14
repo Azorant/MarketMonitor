@@ -1,4 +1,6 @@
 ﻿using System.Text.Json;
+using Discord;
+using Discord.Interactions;
 using MarketMonitor.Bot.Models.Universalis;
 using MarketMonitor.Bot.Models.XIVAPI;
 using MarketMonitor.Database;
@@ -31,9 +33,19 @@ public class ApiService(DatabaseContext db)
         return await Request<T>($"https://v2.xivapi.com/api{path}");
     }
 
-    public async Task UpdateCache()
+    public async Task UpdateCache(SocketInteractionContext context)
     {
         Log.Information("Updating DCs and Worlds");
+        var statusEmbed = new EmbedBuilder()
+            .WithTitle("Updating Database")
+            .WithFields(new EmbedFieldBuilder()
+                    .WithName("Datacenters and Worlds")
+                    .WithValue("Updating"),
+                new EmbedFieldBuilder()
+                    .WithName("Items")
+                    .WithValue("Queued"))
+            .WithColor(Color.Blue);
+        await context.Interaction.FollowupAsync(embed: statusEmbed.Build());
         var dcResponse = await RequestUniversalis<List<DatacenterResponse>>("/data-centers");
         var worldResponse = await RequestUniversalis<List<WorldResponse>>("/worlds");
         var existingWorlds = await db.Worlds.ToListAsync();
@@ -69,15 +81,24 @@ public class ApiService(DatabaseContext db)
 
         await db.SaveChangesAsync();
         Log.Information("DCs and Worlds updated");
+        statusEmbed.Fields.First().Value = $"{dcResponse.Count:N0} Datacenters\n{worldResponse.Count:N0} Worlds";
+        statusEmbed.Fields.Last().Value = "Updating\n0 items";
+        await context.Interaction.ModifyOriginalResponseAsync(m => m.Embed = statusEmbed.Build());
 
         var itemResponses = new List<ItemData>();
-
+        var fetchCount = 0;
         Log.Information("Updating items");
         while (true)
         {
             var response = await RequestXIVAPI<ItemResponse>($"/sheet/Item?limit=500&after={(itemResponses.Count == 0 ? 0 : itemResponses.Last().Id)}");
             if (response.Rows.Count == 0) break; // Fetched all items
             itemResponses.AddRange(response.Rows);
+            fetchCount++;
+            if (fetchCount % 10 == 0)
+            {
+                statusEmbed.Fields.Last().Value = $"Updating\n{itemResponses.Count:N0} items fetched";
+                await context.Interaction.ModifyOriginalResponseAsync(m => m.Embed = statusEmbed.Build());
+            }
         }
 
         var count = 0;
@@ -93,10 +114,20 @@ public class ApiService(DatabaseContext db)
                 Name = rawItem.Fields.Name,
             });
             count++;
+            // ReSharper disable once PossibleLossOfFraction
+            if (count % Math.Floor((double)(itemResponses.Count / 10)) == 0)
+            {
+                statusEmbed.Fields.Last().Value = $"Updating\n{itemResponses.Count:N0} items fetched\n{count:N0} items added";
+                await context.Interaction.ModifyOriginalResponseAsync(m => m.Embed = statusEmbed.Build());
+            }
         }
 
         await db.SaveChangesAsync();
         Log.Information($"Updated {count:N0} items");
+        statusEmbed.Title = "Database Updated";
+        statusEmbed.Fields.Last().Value = $"{itemResponses.Count:N0} items fetched\n{count:N0} items added";
+        statusEmbed.Color = Color.Green;
+        await context.Interaction.ModifyOriginalResponseAsync(m => m.Embed = statusEmbed.Build());
     }
 
     public Task<MarketBoardDataResponse> FetchItem(int itemId, string region) => RequestUniversalis<MarketBoardDataResponse>($"/{region}/{itemId}");

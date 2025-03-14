@@ -11,5 +11,6 @@ services:
       - .env
     ports:
       - 5123:5123
+      - 3400:3400
     restart: on-failure
     

@@ -55,6 +55,7 @@ try
         .AddTransient<ApiService>()
         .AddTransient<LodestoneService>()
         .AddSingleton<CacheService>()
+        .AddSingleton<PrometheusService>()
         .AddHostedService<DiscordClientHost>();
 
     #endregion

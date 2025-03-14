@@ -1,5 +1,6 @@
 ﻿using Discord.Interactions;
 using Humanizer;
+using MarketMonitor.Bot.Jobs;
 using MarketMonitor.Bot.Services;
 using MarketMonitor.Database;
 using MarketMonitor.Database.Entities;
@@ -8,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 namespace MarketMonitor.Bot.Modules;
 
 [Group("retainer", "Retainer commands")]
-public class RetainerModule(DatabaseContext db, ApiService api, CacheService cache) : BaseModule(db)
+public class RetainerModule(DatabaseContext db, ApiService api, CacheJob cache) : BaseModule(db)
 {
     [SlashCommand("setup", "Setup a retainer")]
     public async Task SetupRetainer(string name)
@@ -76,16 +77,16 @@ public class RetainerModule(DatabaseContext db, ApiService api, CacheService cac
             retainer.Id = listings.First().RetainerId;
             db.Update(retainer);
             verified.Add(retainer.Name);
-            await cache.SetRetainer(retainer.Name);
         }
-
-        await db.SaveChangesAsync();
-
+        
         if (verified.Count == 0)
         {
             await SendErrorAsync($"Failed to verify, make sure your {"retainer".Quantize(failed.Count)} {(failed.Count == 1 ? "has" : "have")} the proper item listed on the market.\n{string.Join("\n", failed)}");
             return;
         }
+        
+        await db.SaveChangesAsync();
+        await cache.PopulateCache();
 
         await SendSuccessAsync(
             $"Verified {"retainer".Quantize(verified.Count)} {string.Join(", ", verified)}{(failed.Count == 0 ? string.Empty : $"\n\nFailed to verify {failed.Count} {"retainer".Quantize(failed.Count)}. Make sure they have the proper item listed on the market.\n{string.Join("\n", failed)}")}");

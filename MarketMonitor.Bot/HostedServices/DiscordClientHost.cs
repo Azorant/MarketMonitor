@@ -16,11 +16,12 @@ public sealed class DiscordClientHost : IHostedService
     private readonly IServiceProvider serviceProvider;
     private readonly Events events;
     private readonly UniversalisWebsocket universalisWebsocket;
+    private readonly PrometheusService prometheusService;
 
     public DiscordClientHost(
         DiscordSocketClient client,
         InteractionService interactionService,
-        IServiceProvider serviceProvider, UniversalisWebsocket universalisWebsocket)
+        IServiceProvider serviceProvider, UniversalisWebsocket universalisWebsocket, PrometheusService prometheusService)
     {
         ArgumentNullException.ThrowIfNull(client);
         ArgumentNullException.ThrowIfNull(interactionService);
@@ -30,6 +31,7 @@ public sealed class DiscordClientHost : IHostedService
         this.interactionService = interactionService;
         this.serviceProvider = serviceProvider;
         this.universalisWebsocket = universalisWebsocket;
+        this.prometheusService = prometheusService;
         events = new Events(serviceProvider);
     }
 
@@ -92,8 +94,10 @@ public sealed class DiscordClientHost : IHostedService
             var commands = await interactionService.RegisterCommandsGloballyAsync();
             Log.Information($"Deployed {commands.Count} commands globally");
         }
+
         universalisWebsocket.Connect();
-        
+        prometheusService.Guilds.Set(client.Guilds.Count);
+
         client.Ready -= ClientReady;
     }
 
@@ -113,11 +117,13 @@ public sealed class DiscordClientHost : IHostedService
         await Task.CompletedTask;
     }
 
-    private static async Task SlashCommandExecuted(SlashCommandInfo command, IInteractionContext context, IResult result)
+    private async Task SlashCommandExecuted(SlashCommandInfo command, IInteractionContext context, IResult result)
     {
+        var commandName = $"{(string.IsNullOrEmpty(command.Module.Parent?.SlashGroupName) ? string.Empty : command.Module.Parent.SlashGroupName + ' ')}{(string.IsNullOrEmpty(command.Module.SlashGroupName) ? string.Empty : command.Module.SlashGroupName + ' ')}{command.Name}";
+        prometheusService.Commands.WithLabels([commandName]).Inc();
         if (!result.IsSuccess)
         {
-            Log.Warning("[Command] {ContextUser} tried to run {CommandName} but ran into {S}", context.User, command.Name, result.Error.ToString());
+            Log.Warning("[Command] {ContextUser} tried to run {CommandName} but ran into {S}", context.User, commandName, result.Error.ToString());
             var embed = new EmbedBuilder
             {
                 Color = new Color(0x2F3136)
@@ -166,7 +172,7 @@ public sealed class DiscordClientHost : IHostedService
                     ? $"{context.Guild.Name} ({context.Guild.Id}) #{context.Channel.Name} ({context.Channel.Id})"
                     : $"User Context {context.Interaction.GuildId} {context.Interaction.ChannelId}";
             Log.Information(
-                $"[Command] {guild} {Format.UsernameAndDiscriminator(context.User, false)} ({context.User.Id}) ran /{(string.IsNullOrEmpty(command.Module.Parent?.SlashGroupName) ? string.Empty : command.Module.Parent.SlashGroupName + ' ')}{(string.IsNullOrEmpty(command.Module.SlashGroupName) ? string.Empty : command.Module.SlashGroupName + ' ')}{command.Name} {ParseArgs(((SocketSlashCommandData)context.Interaction.Data).Options)}");
+                $"[Command] {guild} {Format.UsernameAndDiscriminator(context.User, false)} ({context.User.Id}) ran /{commandName} {ParseArgs(((SocketSlashCommandData)context.Interaction.Data).Options)}");
         }
     }
 

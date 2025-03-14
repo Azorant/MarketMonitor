@@ -24,4 +24,5 @@ FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
 EXPOSE 5123
+EXPOSE 3400
 ENTRYPOINT ["dotnet", "MarketMonitor.Startup.dll"]

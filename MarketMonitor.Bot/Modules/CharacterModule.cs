@@ -1,4 +1,5 @@
 ﻿using Discord.Interactions;
+using MarketMonitor.Bot.Jobs;
 using MarketMonitor.Bot.Services;
 using MarketMonitor.Database;
 using MarketMonitor.Database.Entities;
@@ -6,7 +7,7 @@ using MarketMonitor.Database.Entities;
 namespace MarketMonitor.Bot.Modules;
 
 [Group("character", "Character commands")]
-public class CharacterModule(DatabaseContext db, LodestoneService lodestone, CacheService cache) : BaseModule(db)
+public class CharacterModule(DatabaseContext db, LodestoneService lodestone, CacheJob cache) : BaseModule(db)
 {
     [SlashCommand("setup", "Setup your character")]
     public async Task SetCharacter([MaxLength(64)] string characterName, [Autocomplete<DatacenterAutocompleteHandler>] string datacenter)
@@ -73,7 +74,7 @@ public class CharacterModule(DatabaseContext db, LodestoneService lodestone, Cac
         character.IsVerified = true;
         db.Update(character);
         await db.SaveChangesAsync();
-        await cache.SetCharacter(character.Name, character.Id);
+        await cache.PopulateCache();
         await SendSuccessAsync("Character verified.\nIf you want to track sale history or get notifications when undercut on the market run {command}."); // TODO: Update command
     }
 
