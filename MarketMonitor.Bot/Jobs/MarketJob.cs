@@ -7,12 +7,14 @@ using Serilog;
 
 namespace MarketMonitor.Bot.Jobs;
 
-public class MarketJob(DatabaseContext db, ApiService api, DiscordSocketClient client)
+public class MarketJob(DatabaseContext db, ApiService api, DiscordSocketClient client, CacheService cacheService)
 {
     public async Task Execute()
     {
         try
         {
+            cacheService.Emotes.TryGetValue("gil", out var gilEmote);
+
             var listingGroups = await db.Listings.Include(l => l.World).Include(l => l.Item).Include(l => l.Retainer).ThenInclude(r => r.Owner).Where(l => !l.IsNotified)
                 .GroupBy(l => l.ItemId).ToListAsync();
 
@@ -29,7 +31,7 @@ public class MarketJob(DatabaseContext db, ApiService api, DiscordSocketClient c
                     var retainerGroups = dcGroup.GroupBy(l => new { l.RetainerName, l.RetainerOwnerId });
                     foreach (var retainerGroup in retainerGroups)
                     {
-                        var retainer = retainerGroup.First();
+                        var retainer = retainerGroup.OrderBy(r => r.PricePerUnit).First();
                         var region = retainer.Retainer.Owner.NotificationRegionId;
 
                         var cheapestNq = market.Listings.Where(l => !l.Hq && (region == null || l.WorldId == region)).DefaultIfEmpty().Min(l => l?.PricePerUnit);
@@ -55,7 +57,14 @@ public class MarketJob(DatabaseContext db, ApiService api, DiscordSocketClient c
                             userDict.Add(retainerGroup.Key.RetainerName, retainerDict);
                         }
 
-                        retainerDict.Add($"[{retainer.Item.Name}](https://universalis.app/market/{retainer.ItemId})");
+                        var cutAmount = retainer.PricePerUnit - (retainer.IsHq ? cheapestHq : cheapestNq);
+                        var cutText = string.Empty;
+                        if (cutAmount != null)
+                        {
+                            cutText = $"{(gilEmote == null ? "" : $" {gilEmote}")} {cutAmount:N0} ({(double)cutAmount / retainer.PricePerUnit * 100:N1}%)";
+                        }
+
+                        retainerDict.Add($"[{retainer.Item.Name}](https://universalis.app/market/{retainer.ItemId}){cutText}");
                     }
                 }
             }
@@ -72,7 +81,7 @@ public class MarketJob(DatabaseContext db, ApiService api, DiscordSocketClient c
                     if (channel == null) continue;
                     await channel.SendMessageAsync(embed: new EmbedBuilder()
                         .WithTitle("Undercut Alert")
-                        .WithDescription("The following items have been undercut.")
+                        .WithDescription("Below are the items that have been undercut and the amounts they were cut by.")
                         .WithColor(Color.Red)
                         .WithFields(user.Value.Select(r => new EmbedFieldBuilder().WithName(r.Key).WithValue(string.Join("\n", r.Value))))
                         .WithCurrentTimestamp()

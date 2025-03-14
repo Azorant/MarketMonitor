@@ -3,6 +3,7 @@ using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using MarketMonitor.Bot.Services;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
 using Serilog.Events;
@@ -99,6 +100,9 @@ public sealed class DiscordClientHost : IHostedService
         prometheusService.Guilds.Set(client.Guilds.Count);
 
         client.Ready -= ClientReady;
+        
+        var cache = serviceProvider.GetRequiredService<CacheService>();
+        await cache.LoadApplicationEmotes();
     }
 
     private static async Task LogAsync(LogMessage message)

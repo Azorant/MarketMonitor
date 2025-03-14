@@ -1,11 +1,16 @@
-﻿using MarketMonitor.Database;
+﻿using Discord;
+using Discord.WebSocket;
+using MarketMonitor.Database;
 using Microsoft.Extensions.Caching.Memory;
+using Serilog;
 using StackExchange.Redis;
 
 namespace MarketMonitor.Bot.Services;
 
-public class CacheService(ConnectionMultiplexer redis)
+public class CacheService(ConnectionMultiplexer redis, DiscordSocketClient client)
 {
+    public Dictionary<string, Emote> Emotes { get; set; } = new(); 
+    
     private string BuildKey(string key) => $"{Environment.GetEnvironmentVariable("PREFIX") ?? "marketmonitor"}:{key}";
 
     public async Task<(bool, ulong)> GetCharacter(string name)
@@ -32,5 +37,15 @@ public class CacheService(ConnectionMultiplexer redis)
     {
         var db = redis.GetDatabase();
         await db.StringSetAsync(BuildKey($"retainer:{name}"), true, expiry: TimeSpan.FromMinutes(30));
+    }
+
+    public async Task LoadApplicationEmotes()
+    {
+        var emotes = await client.GetApplicationEmotesAsync();
+        foreach (var emote in emotes)
+        {
+            Emotes.Add(emote.Name, emote);
+        }
+        Log.Information($"Loaded {Emotes.Count} application emotes");
     }
 }
