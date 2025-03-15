@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using WebSocketSharp;
+using ErrorEventArgs = WebSocketSharp.ErrorEventArgs;
 
 namespace MarketMonitor.Bot.Services;
 
@@ -23,6 +24,8 @@ public class UniversalisWebsocket
 
         client.OnMessage += OnPacket;
         client.OnOpen += OnOpen;
+        client.OnClose += OnClose;
+        client.OnError += OnError;
     }
 
     private async void OnPacket(object? sender, MessageEventArgs args)
@@ -148,11 +151,24 @@ public class UniversalisWebsocket
         }
     }
 
-    private async void OnOpen(object? sender, EventArgs eventArgs)
+    private void OnOpen(object? sender, EventArgs eventArgs)
     {
+        Log.Information("Universalis websocket connected");
         client.Send(Serializer.Serialize(new SubscribePacket("subscribe", "listings/add")));
         client.Send(Serializer.Serialize(new SubscribePacket("subscribe", "listings/remove")));
         client.Send(Serializer.Serialize(new SubscribePacket("subscribe", "sales/add")));
+    }
+
+    private void OnError(object? sender, ErrorEventArgs e)
+    {
+        Log.Error(e.Exception, "Universalis websocket error");
+    }
+
+    private async void OnClose(object? sender, CloseEventArgs e)
+    {
+        Log.Warning($"Universalis websocket connection closed {e.Code} - {e.Reason}");
+        await Task.Delay(5000);
+        Connect();
     }
 
     public void Connect() => client.Connect();
