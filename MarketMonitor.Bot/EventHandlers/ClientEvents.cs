@@ -10,6 +10,7 @@ public class ClientEvents(IServiceProvider serviceProvider)
 {
     private readonly DiscordSocketClient client = serviceProvider.GetRequiredService<DiscordSocketClient>();
     private readonly PrometheusService prometheusService = serviceProvider.GetRequiredService<PrometheusService>();
+    private readonly StatusService statusService = serviceProvider.GetRequiredService<StatusService>();
     
     public Task OnGuildJoined(SocketGuild guild)
     {
@@ -67,14 +68,7 @@ public class ClientEvents(IServiceProvider serviceProvider)
     {
         Task.Run(async () =>
         {
-            if (!ulong.TryParse(Environment.GetEnvironmentVariable("LOG_CHANNEL"), out var channelId)) return;
-            if (client.GetChannel(channelId) is not SocketTextChannel channel || channel.GetChannelType() != ChannelType.Text) return;
-
-            await channel.SendMessageAsync(embed: new EmbedBuilder()
-                .WithTitle("Client Ready")
-                .WithColor(Color.Green)
-                .WithCurrentTimestamp()
-                .Build());
+            await statusService.SendUpdate("Client Connected", Color.Green);
         }).ContinueWith(t =>
         {
             if (t.Exception != null) Log.Error(t.Exception, "Error while logging client ready");
@@ -86,15 +80,7 @@ public class ClientEvents(IServiceProvider serviceProvider)
     {
         Task.Run(async () =>
         {
-            if (!ulong.TryParse(Environment.GetEnvironmentVariable("LOG_CHANNEL"), out var channelId)) return;
-            if (client.GetChannel(channelId) is not SocketTextChannel channel || channel.GetChannelType() != ChannelType.Text) return;
-
-            await channel.SendMessageAsync(embed: new EmbedBuilder()
-                .WithTitle("Client Disconnected")
-                .WithDescription(exception.Message)
-                .WithColor(Color.Gold)
-                .WithCurrentTimestamp()
-                .Build());
+            await statusService.SendUpdate("Client Disconnected", exception.Message, Color.Gold);
         }).ContinueWith(t =>
         {
             if (t.Exception != null) Log.Error(t.Exception, "Error while logging client disconnect");

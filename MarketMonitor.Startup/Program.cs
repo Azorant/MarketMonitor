@@ -56,6 +56,7 @@ try
         .AddTransient<LodestoneService>()
         .AddSingleton<CacheService>()
         .AddSingleton<PrometheusService>()
+        .AddTransient<StatusService>()
         .AddHostedService<DiscordClientHost>();
 
     #endregion
@@ -79,6 +80,7 @@ try
         }))
         .AddHangfireServer()
         .AddSingleton<StatusJob>()
+        .AddSingleton<HandlePacketJob>()
         .AddTransient<CacheJob>()
         .AddTransient<MarketJob>();
 

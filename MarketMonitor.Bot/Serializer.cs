@@ -7,10 +7,10 @@ public static class Serializer
 {
     public static byte[] Serialize(object obj)
     {
-        MemoryStream ms = new MemoryStream();
+        using var ms = new MemoryStream();
         using (var writer = new BsonDataWriter(ms))
         {
-            JsonSerializer serializer = new JsonSerializer();
+            var serializer = new JsonSerializer();
             serializer.Serialize(writer, obj);
         }
 
@@ -19,13 +19,11 @@ public static class Serializer
 
     public static T? Deserialize<T>(byte[] bytes)
     {
-        MemoryStream ms = new MemoryStream(bytes);
-        using (var reader = new BsonDataReader(ms))
-        {
-            JsonSerializer serializer = new JsonSerializer();
+        using var ms = new MemoryStream(bytes);
+        using var reader = new BsonDataReader(ms);
+        var serializer = new JsonSerializer();
 
-            return serializer.Deserialize<T>(reader);
-        }
+        return serializer.Deserialize<T>(reader);
     }
 
     public static bool TryDeserialize<T>(byte[] bytes, out T? obj)
