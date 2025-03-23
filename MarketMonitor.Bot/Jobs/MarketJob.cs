@@ -1,7 +1,8 @@
-﻿using Discord;
+using Discord;
 using Discord.WebSocket;
 using MarketMonitor.Bot.Services;
 using MarketMonitor.Database;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 
@@ -9,6 +10,7 @@ namespace MarketMonitor.Bot.Jobs;
 
 public class MarketJob(DatabaseContext db, ApiService api, DiscordSocketClient client, CacheService cacheService)
 {
+    [TypeFilter(typeof(LogExecutionAttribute))]
     public async Task Execute()
     {
         try

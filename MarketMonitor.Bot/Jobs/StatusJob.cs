@@ -1,7 +1,9 @@
 ﻿using Discord;
 using Discord.WebSocket;
+using Hangfire;
 using MarketMonitor.Bot.Services;
 using MarketMonitor.Database;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 
@@ -22,6 +24,7 @@ public class StatusJob(DiscordSocketClient client, PrometheusService stats, Data
         new("/character setup"), new("{characters}", ActivityType.Watching), new("/retainer setup"), new("{retainers}", ActivityType.Watching), new("eris.gg")
     ];
 
+    [TypeFilter(typeof(LogExecutionAttribute)), DisableConcurrentExecution("status", 10)]
     public async Task SetStatus()
     {
         try

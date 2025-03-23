@@ -74,10 +74,16 @@ try
 
     #region Jobs
 
-    builder.Services.AddHangfire((provider, configuration) => configuration.UseRedisStorage(provider.GetRequiredService<ConnectionMultiplexer>(), new RedisStorageOptions
-        {
-            Prefix = $"{Environment.GetEnvironmentVariable("PREFIX") ?? "marketmonitor"}:hangfire:"
-        }))
+    builder.Services
+        .AddTransient<LogExecutionAttribute>()
+        .AddHangfire((provider, configuration) =>
+            configuration.UseRedisStorage(provider.GetRequiredService<ConnectionMultiplexer>(), new RedisStorageOptions
+                {
+                    Prefix = $"{Environment.GetEnvironmentVariable("PREFIX") ?? "marketmonitor"}:hangfire:",
+                    Db = 1
+                })
+                .UseFilter(provider.GetRequiredService<LogExecutionAttribute>())
+        )
         .AddHangfireServer()
         .AddSingleton<StatusJob>()
         .AddSingleton<HandlePacketJob>()
@@ -112,7 +118,7 @@ try
         await db.ApplyMigrations();
     }
 
-    RecurringJob.AddOrUpdate<StatusJob>("client_status", x => x.SetStatus(), "0,15,30,45 * * * * *");
+    RecurringJob.AddOrUpdate<StatusJob>("status", x => x.SetStatus(), "0,15,30,45 * * * * *");
     RecurringJob.AddOrUpdate<CacheJob>("cache", x => x.PopulateCache(), "*/15 * * * *");
     RecurringJob.AddOrUpdate<MarketJob>("market", x => x.Execute(), "*/10 * * * *");
     RecurringJob.AddOrUpdate<HealthJob>("health", x => x.CheckHealth(), "0,15,30,45 * * * * *");

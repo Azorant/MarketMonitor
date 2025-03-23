@@ -14,6 +14,7 @@ public class UniversalisWebsocket
     private readonly CacheService cache;
     private readonly HandlePacketJob job;
     private readonly StatusService statusService;
+    public bool FirstConnect { get; set; } = true;
 
     public UniversalisWebsocket(CacheService cache, HandlePacketJob job, StatusService statusService)
     {
@@ -92,6 +93,7 @@ public class UniversalisWebsocket
         client.Send(Serializer.Serialize(new SubscribePacket("subscribe", "listings/add")));
         client.Send(Serializer.Serialize(new SubscribePacket("subscribe", "listings/remove")));
         client.Send(Serializer.Serialize(new SubscribePacket("subscribe", "sales/add")));
+        FirstConnect = false;
     }
 
     private void OnError(object? sender, ErrorEventArgs e)

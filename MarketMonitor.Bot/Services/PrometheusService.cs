@@ -12,6 +12,7 @@ public class PrometheusService
     public Gauge TrackedCharacters { get; set; }
     public Gauge TrackedRetainers { get; set; }
     public Gauge TrackedListings { get; set; }
+    public Histogram JobExecuted { get; set; }
 
     public PrometheusService()
     {
@@ -23,6 +24,7 @@ public class PrometheusService
         TrackedCharacters = Metrics.CreateGauge($"{prefix}_tracked_characters", "Number of tracked characters");
         TrackedRetainers = Metrics.CreateGauge($"{prefix}_tracked_retainers", "Number of tracked retainers");
         TrackedListings = Metrics.CreateGauge($"{prefix}_tracked_listings", "Number of tracked listings");
+        JobExecuted = Metrics.CreateHistogram($"{prefix}_job_executed", "Number of jobs executed and duration", labelNames: ["job"]);
 
         Server = new MetricServer(3400);
         Server.Start();

@@ -1,6 +1,7 @@
 ﻿using MarketMonitor.Bot.Models.Universalis;
 using MarketMonitor.Database;
 using MarketMonitor.Database.Entities;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -8,6 +9,7 @@ namespace MarketMonitor.Bot.Jobs;
 
 public class HandlePacketJob(IServiceProvider serviceProvider)
 {
+    [TypeFilter(typeof(LogExecutionAttribute))]
     public async Task HandleListingAdd(string retainerId, int itemId, int worldId, List<ListingData> listings)
     {
         await using var db = serviceProvider.GetRequiredService<DatabaseContext>();
@@ -66,6 +68,7 @@ public class HandlePacketJob(IServiceProvider serviceProvider)
         await db.SaveChangesAsync();
     }
 
+    [TypeFilter(typeof(LogExecutionAttribute))]
     public async Task HandleListingRemove(string retainerId, List<string> listingIds)
     {
         await using var db = serviceProvider.GetRequiredService<DatabaseContext>();
@@ -82,6 +85,7 @@ public class HandlePacketJob(IServiceProvider serviceProvider)
         await db.SaveChangesAsync();
     }
 
+    [TypeFilter(typeof(LogExecutionAttribute))]
     public async Task HandleSaleAdd(ulong buyerId, int itemId, int worldId, List<SaleData> sales)
     {
         await using var db = serviceProvider.GetRequiredService<DatabaseContext>();

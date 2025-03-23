@@ -1,5 +1,6 @@
 ﻿using MarketMonitor.Bot.Services;
 using MarketMonitor.Database;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 
@@ -7,6 +8,7 @@ namespace MarketMonitor.Bot.Jobs;
 
 public class CacheJob(DatabaseContext db, CacheService cache, PrometheusService stats)
 {
+    [TypeFilter(typeof(LogExecutionAttribute))]
     public async Task<(int, int)> PopulateCache()
     {
         var characterCount = 0;
