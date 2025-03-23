@@ -81,6 +81,7 @@ try
         .AddHangfireServer()
         .AddSingleton<StatusJob>()
         .AddSingleton<HandlePacketJob>()
+        .AddTransient<HealthJob>()
         .AddTransient<CacheJob>()
         .AddTransient<MarketJob>();
 
@@ -114,6 +115,7 @@ try
     RecurringJob.AddOrUpdate<StatusJob>("client_status", x => x.SetStatus(), "0,15,30,45 * * * * *");
     RecurringJob.AddOrUpdate<CacheJob>("cache", x => x.PopulateCache(), "*/15 * * * *");
     RecurringJob.AddOrUpdate<MarketJob>("market", x => x.Execute(), "*/10 * * * *");
+    RecurringJob.AddOrUpdate<HealthJob>("health", x => x.CheckHealth(), "0,15,30,45 * * * * *");
 
     host.Run();
 }
