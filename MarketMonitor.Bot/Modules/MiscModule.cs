@@ -3,6 +3,7 @@ using Discord;
 using Discord.Interactions;
 using MarketMonitor.Bot.HostedServices;
 using MarketMonitor.Bot.Services;
+using Microsoft.EntityFrameworkCore;
 
 namespace MarketMonitor.Bot.Modules;
 

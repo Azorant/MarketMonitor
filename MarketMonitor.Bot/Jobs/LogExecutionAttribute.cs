@@ -18,8 +18,10 @@ public class LogExecutionAttribute(PrometheusService stats) : JobFilterAttribute
             nameof(HandlePacketJob.HandleListingRemove) => "listing/remove",
             nameof(HandlePacketJob.HandleSaleAdd) => "sale/add",
             nameof(HealthJob.CheckHealth) => "health",
-            nameof(MarketJob.Execute) => "market",
+            nameof(MarketJob.CheckMarket) => "market",
             nameof(StatusJob.SetStatus) => "status",
+            nameof(HandleSaleJob.Handle) => "sales",
+            nameof(StatusJob.SetupAlerts) => "alerts",
             _ => context.BackgroundJob.Job.Method.Name
         };
 

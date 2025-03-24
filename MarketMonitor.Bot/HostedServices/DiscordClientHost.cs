@@ -16,13 +16,14 @@ public sealed class DiscordClientHost : IHostedService
     private readonly InteractionService interactionService;
     private readonly IServiceProvider serviceProvider;
     private readonly Events events;
-    private readonly UniversalisWebsocket universalisWebsocket;
+    private readonly UniversalisGeneralWebsocket universalisGeneralWebsocket;
+    private readonly UniversalisSpecificWebsocket universalisSpecificWebsocket;
     private readonly PrometheusService prometheusService;
 
     public DiscordClientHost(
         DiscordSocketClient client,
         InteractionService interactionService,
-        IServiceProvider serviceProvider, UniversalisWebsocket universalisWebsocket, PrometheusService prometheusService)
+        IServiceProvider serviceProvider, UniversalisGeneralWebsocket universalisGeneralWebsocket, PrometheusService prometheusService, UniversalisSpecificWebsocket universalisSpecificWebsocket)
     {
         ArgumentNullException.ThrowIfNull(client);
         ArgumentNullException.ThrowIfNull(interactionService);
@@ -31,8 +32,9 @@ public sealed class DiscordClientHost : IHostedService
         this.client = client;
         this.interactionService = interactionService;
         this.serviceProvider = serviceProvider;
-        this.universalisWebsocket = universalisWebsocket;
+        this.universalisGeneralWebsocket = universalisGeneralWebsocket;
         this.prometheusService = prometheusService;
+        this.universalisSpecificWebsocket = universalisSpecificWebsocket;
         events = new Events(serviceProvider);
     }
 
@@ -96,7 +98,8 @@ public sealed class DiscordClientHost : IHostedService
             Log.Information($"Deployed {commands.Count} commands globally");
         }
 
-        universalisWebsocket.Connect();
+        universalisGeneralWebsocket.Connect();
+        universalisSpecificWebsocket.Connect();
         prometheusService.Guilds.Set(client.Guilds.Count);
 
         client.Ready -= ClientReady;

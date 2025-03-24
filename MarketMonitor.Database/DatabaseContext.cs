@@ -13,6 +13,7 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : DbCont
     public DbSet<WorldEntity> Worlds { get; set; }
     public DbSet<ItemEntity> Items { get; set; }
     public DbSet<PurchaseEntity> Purchases { get; set; }
+    public DbSet<SaleEntity> Sales { get; set; }
 
     public async Task ApplyMigrations()
     {
@@ -53,5 +54,8 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : DbCont
 
         modelBuilder.Entity<PurchaseEntity>()
             .HasKey(p => p.Id);
+
+        modelBuilder.Entity<SaleEntity>()
+            .HasKey(l => l.Id);
     }
 };

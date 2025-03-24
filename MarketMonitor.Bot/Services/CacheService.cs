@@ -1,5 +1,7 @@
-﻿using Discord;
+﻿using System.Text.Json;
+using Discord;
 using Discord.WebSocket;
+using MarketMonitor.Bot.Models.Universalis;
 using MarketMonitor.Database;
 using Microsoft.Extensions.Caching.Memory;
 using Serilog;

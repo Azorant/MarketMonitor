@@ -1,4 +1,5 @@
-﻿using Discord.Interactions;
+﻿using Discord;
+using Discord.Interactions;
 using Humanizer;
 using MarketMonitor.Bot.Jobs;
 using MarketMonitor.Bot.Services;
@@ -9,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 namespace MarketMonitor.Bot.Modules;
 
 [Group("retainer", "Retainer commands")]
-public class RetainerModule(DatabaseContext db, ApiService api, CacheJob cache) : BaseModule(db)
+public class RetainerModule(DatabaseContext db, ApiService api, CacheJob cacheJob, CacheService cacheService) : BaseModule(db)
 {
     [SlashCommand("setup", "Setup a retainer")]
     public async Task SetupRetainer(string name)
@@ -78,17 +79,44 @@ public class RetainerModule(DatabaseContext db, ApiService api, CacheJob cache) 
             db.Update(retainer);
             verified.Add(retainer.Name);
         }
-        
+
         if (verified.Count == 0)
         {
-            await SendErrorAsync($"Failed to verify, make sure your {"retainer".Quantize(failed.Count)} {(failed.Count == 1 ? "has" : "have")} the proper item listed on the market.\n{string.Join("\n", failed)}");
+            await SendErrorAsync(
+                $"Failed to verify, make sure your {"retainer".Quantize(failed.Count)} {(failed.Count == 1 ? "has" : "have")} the proper item listed on the market.\n{string.Join("\n", failed)}");
             return;
         }
-        
+
         await db.SaveChangesAsync();
-        await cache.PopulateCache();
+        await cacheJob.PopulateCache();
 
         await SendSuccessAsync(
             $"Verified {"retainer".Quantize(verified.Count)} {string.Join(", ", verified)}{(failed.Count == 0 ? string.Empty : $"\n\nFailed to verify {failed.Count} {"retainer".Quantize(failed.Count)}. Make sure they have the proper item listed on the market.\n{string.Join("\n", failed)}")}");
+    }
+
+    [SlashCommand("recent-sales", "Show recent sales")]
+    public async Task Sales()
+    {
+        await DeferAsync();
+        var sales = await db.Sales.Include(s => s.Listing).ThenInclude(l => l.Item).Where(l => l.Listing.RetainerOwnerId == Context.User.Id).OrderByDescending(l => l.BoughtAt)
+            .Take(10).ToListAsync();
+
+        var embed = new EmbedBuilder()
+            .WithTitle("Recent Sales")
+            .WithColor(Color.Blue)
+            .WithCurrentTimestamp();
+
+        cacheService.Emotes.TryGetValue("gil", out var gilEmote);
+
+        foreach (var retainer in sales.GroupBy(s => s.Listing.RetainerName))
+        {
+            embed.AddField(retainer.Key,
+               string.Join("\n\n", retainer.Select(s =>
+                    $"{s.Listing.Item.Name}{(gilEmote == null ? "" : $" {gilEmote}")} {s.Listing.Quantity * s.Listing.PricePerUnit:N0}\n{s.BuyerName}\n-# {TimestampTag.FormatFromDateTime(s.BoughtAt.SpecifyUtc(), TimestampTagStyles.Relative)}")));
+        }
+
+
+        if (sales.Count == 0) embed.WithDescription("No sales :(");
+        await FollowupAsync(embed: embed.Build());
     }
 }

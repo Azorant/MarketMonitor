@@ -2,6 +2,7 @@ using Discord;
 using Discord.WebSocket;
 using MarketMonitor.Bot.Services;
 using MarketMonitor.Database;
+using MarketMonitor.Database.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
@@ -11,13 +12,13 @@ namespace MarketMonitor.Bot.Jobs;
 public class MarketJob(DatabaseContext db, ApiService api, DiscordSocketClient client, CacheService cacheService)
 {
     [TypeFilter(typeof(LogExecutionAttribute))]
-    public async Task Execute()
+    public async Task CheckMarket()
     {
         try
         {
             cacheService.Emotes.TryGetValue("gil", out var gilEmote);
 
-            var listingGroups = await db.Listings.Include(l => l.World).Include(l => l.Item).Include(l => l.Retainer).ThenInclude(r => r.Owner).Where(l => !l.IsNotified)
+            var listingGroups = await db.Listings.Include(l => l.World).Include(l => l.Item).Include(l => l.Retainer).ThenInclude(r => r.Owner).Where(l => !l.IsNotified && l.Flags == ListingFlags.None)
                 .GroupBy(l => l.ItemId).ToListAsync();
 
             var notifications = new Dictionary<ulong, Dictionary<string, List<string>>>();

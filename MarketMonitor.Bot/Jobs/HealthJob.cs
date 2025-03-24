@@ -6,7 +6,7 @@ using Serilog;
 
 namespace MarketMonitor.Bot.Jobs;
 
-public class HealthJob(UniversalisWebsocket ws, StatusService status)
+public class HealthJob(UniversalisGeneralWebsocket ws, StatusService status)
 {
     [TypeFilter(typeof(LogExecutionAttribute)), DisableConcurrentExecution("health", 10)]
     public async Task CheckHealth()

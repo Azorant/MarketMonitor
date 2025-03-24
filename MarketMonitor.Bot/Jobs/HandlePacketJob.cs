@@ -1,6 +1,7 @@
 ﻿using MarketMonitor.Bot.Models.Universalis;
 using MarketMonitor.Database;
 using MarketMonitor.Database.Entities;
+using MarketMonitor.Database.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -40,9 +41,9 @@ public class HandlePacketJob(IServiceProvider serviceProvider)
             {
                 var updated = false;
                 var relisted = false;
-                if (existing.IsRemoved)
+                if (existing.Flags.HasFlag(ListingFlags.Removed))
                 {
-                    existing.IsRemoved = false;
+                    existing.Flags = existing.Flags.RemoveFlag(ListingFlags.Removed);
                     relisted = true;
                 }
 
@@ -74,11 +75,11 @@ public class HandlePacketJob(IServiceProvider serviceProvider)
         await using var db = serviceProvider.GetRequiredService<DatabaseContext>();
         var retainer = await db.Retainers.AsNoTracking().FirstOrDefaultAsync(r => r.Id == retainerId);
         if (retainer == null) return;
-        var listings = await db.Listings.Where(l => listingIds.Contains(l.Id) && !l.IsRemoved).ToListAsync();
+        var listings = await db.Listings.Where(l => listingIds.Contains(l.Id) && !l.Flags.HasFlag(ListingFlags.Removed)).ToListAsync();
 
         foreach (var listing in listings)
         {
-            listing.IsRemoved = true;
+            listing.Flags = listing.Flags.AddFlag(ListingFlags.Removed);
             db.Update(listing);
         }
         

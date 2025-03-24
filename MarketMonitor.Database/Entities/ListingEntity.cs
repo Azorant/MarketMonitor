@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using MarketMonitor.Database.Models;
 
 namespace MarketMonitor.Database.Entities;
 
@@ -11,7 +12,7 @@ public class ListingEntity
     public int PricePerUnit { get; set; }
     public int Quantity { get; set; }
     public DateTime UpdatedAt { get; set; }
-    public bool IsRemoved { get; set; }
+    public ListingFlags Flags { get; set; } = ListingFlags.None;
     public bool IsHq { get; set; }
     [MaxLength(64)]
     public required string RetainerName { get; set; }

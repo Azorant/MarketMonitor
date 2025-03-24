@@ -51,7 +51,8 @@ try
         })
         .AddSingleton<DiscordSocketClient>()
         .AddSingleton<InteractionService>(x => new InteractionService(x.GetRequiredService<DiscordSocketClient>()))
-        .AddSingleton<UniversalisWebsocket>()
+        .AddSingleton<UniversalisGeneralWebsocket>()
+        .AddSingleton<UniversalisSpecificWebsocket>()
         .AddTransient<ApiService>()
         .AddTransient<LodestoneService>()
         .AddSingleton<CacheService>()
@@ -89,6 +90,7 @@ try
         .AddSingleton<HandlePacketJob>()
         .AddTransient<HealthJob>()
         .AddTransient<CacheJob>()
+        .AddTransient<HandleSaleJob>()
         .AddTransient<MarketJob>();
 
     #endregion
@@ -119,8 +121,9 @@ try
     }
 
     RecurringJob.AddOrUpdate<StatusJob>("status", x => x.SetStatus(), "0,15,30,45 * * * * *");
+    RecurringJob.AddOrUpdate<StatusJob>("alerts", x => x.SetupAlerts(), "0,15,30,45 * * * * *");
     RecurringJob.AddOrUpdate<CacheJob>("cache", x => x.PopulateCache(), "*/15 * * * *");
-    RecurringJob.AddOrUpdate<MarketJob>("market", x => x.Execute(), "*/10 * * * *");
+    RecurringJob.AddOrUpdate<MarketJob>("market", x => x.CheckMarket(), "*/10 * * * *");
     RecurringJob.AddOrUpdate<HealthJob>("health", x => x.CheckHealth(), "0,15,30,45 * * * * *");
 
     host.Run();
