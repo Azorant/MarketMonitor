@@ -52,7 +52,6 @@ try
         .AddSingleton<DiscordSocketClient>()
         .AddSingleton<InteractionService>(x => new InteractionService(x.GetRequiredService<DiscordSocketClient>()))
         .AddSingleton<UniversalisGeneralWebsocket>()
-        .AddSingleton<UniversalisSpecificWebsocket>()
         .AddTransient<ApiService>()
         .AddTransient<LodestoneService>()
         .AddSingleton<CacheService>()
@@ -121,8 +120,8 @@ try
     }
 
     RecurringJob.AddOrUpdate<StatusJob>("status", x => x.SetStatus(), "0,15,30,45 * * * * *");
-    RecurringJob.AddOrUpdate<StatusJob>("alerts", x => x.SetupAlerts(), "0,15,30,45 * * * * *");
-    RecurringJob.AddOrUpdate<CacheJob>("cache", x => x.PopulateCache(), "*/15 * * * *");
+    RecurringJob.AddOrUpdate<CacheJob>("listing_cache", x => x.PopulateListingCache(), "0,30 * * * * *");
+    RecurringJob.AddOrUpdate<CacheJob>("character_cache", x => x.PopulateCharacterCache(), "*/15 * * * *");
     RecurringJob.AddOrUpdate<MarketJob>("market", x => x.CheckMarket(), "*/10 * * * *");
     RecurringJob.AddOrUpdate<HealthJob>("health", x => x.CheckHealth(), "0,15,30,45 * * * * *");
 

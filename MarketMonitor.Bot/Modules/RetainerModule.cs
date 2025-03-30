@@ -88,7 +88,7 @@ public class RetainerModule(DatabaseContext db, ApiService api, CacheJob cacheJo
         }
 
         await db.SaveChangesAsync();
-        await cacheJob.PopulateCache();
+        await cacheJob.PopulateCharacterCache();
 
         await SendSuccessAsync(
             $"Verified {"retainer".Quantize(verified.Count)} {string.Join(", ", verified)}{(failed.Count == 0 ? string.Empty : $"\n\nFailed to verify {failed.Count} {"retainer".Quantize(failed.Count)}. Make sure they have the proper item listed on the market.\n{string.Join("\n", failed)}")}");

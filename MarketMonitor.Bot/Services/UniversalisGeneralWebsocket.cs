@@ -13,14 +13,16 @@ public class UniversalisGeneralWebsocket
     private readonly WebSocket client;
     private readonly CacheService cache;
     private readonly HandlePacketJob job;
+    private readonly HandleSaleJob saleJob;
     private readonly StatusService statusService;
     public bool FirstConnect { get; set; } = true;
 
-    public UniversalisGeneralWebsocket(CacheService cache, HandlePacketJob job, StatusService statusService)
+    public UniversalisGeneralWebsocket(CacheService cache, HandlePacketJob job, StatusService statusService, HandleSaleJob saleJob)
     {
         this.cache = cache;
         this.job = job;
         this.statusService = statusService;
+        this.saleJob = saleJob;
         client = new WebSocket("wss://universalis.app/api/ws");
         client.SslConfiguration.EnabledSslProtocols = System.Security.Authentication.SslProtocols.Tls12;
 
@@ -76,6 +78,14 @@ public class UniversalisGeneralWebsocket
                         BackgroundJob.Enqueue(() => job.HandleSaleAdd(id, packet.Item, packet.World, buyerGroup.ToList()));
                     }
 
+                    var trackedListing = await cache.GetListing(packet.Item, packet.World);
+                    if (!trackedListing) break;
+
+                    foreach (var sale in packet.Sales!)
+                    {
+                        BackgroundJob.Schedule(() => saleJob.Handle(packet.Item, packet.World, sale), TimeSpan.FromMinutes(1));
+                    }
+                    
                     break;
                 }
             }

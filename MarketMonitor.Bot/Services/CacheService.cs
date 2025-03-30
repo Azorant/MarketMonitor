@@ -41,6 +41,19 @@ public class CacheService(ConnectionMultiplexer redis, DiscordSocketClient clien
         await db.StringSetAsync(BuildKey($"retainer:{name}"), true, expiry: TimeSpan.FromMinutes(30));
     }
 
+    public async Task<bool> GetListing(int itemId, int worldId)
+    {
+        var db = redis.GetDatabase();
+        var value = await db.StringGetAsync(BuildKey($"listing:{itemId}:{worldId}"));
+        return !value.IsNullOrEmpty;
+    }
+    
+    public async Task SetListing(int itemId, int worldId)
+    {
+        var db = redis.GetDatabase();
+        await db.StringSetAsync(BuildKey($"listing:{itemId}:{worldId}"), true, expiry: TimeSpan.FromSeconds(40));
+    }
+
     public async Task LoadApplicationEmotes()
     {
         var emotes = await client.GetApplicationEmotesAsync();

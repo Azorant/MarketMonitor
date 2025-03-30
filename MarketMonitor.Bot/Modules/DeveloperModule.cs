@@ -23,7 +23,7 @@ public class DeveloperModule(DatabaseContext db) : BaseModule(db)
         public async Task UpdateCache()
         {
             await DeferAsync();
-            var results = await cacheJob.PopulateCache();
+            var results = await cacheJob.PopulateCharacterCache();
             await FollowupAsync(embed: new EmbedBuilder()
                 .WithTitle("Cache Updated")
                 .WithFields(new EmbedFieldBuilder()

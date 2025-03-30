@@ -74,7 +74,7 @@ public class CharacterModule(DatabaseContext db, LodestoneService lodestone, Cac
         character.IsVerified = true;
         db.Update(character);
         await db.SaveChangesAsync();
-        await cache.PopulateCache();
+        await cache.PopulateCharacterCache();
         await SendSuccessAsync($"Character verified.\nIf you want to track sale history or get notifications when undercut on the market run {await GetCommand("retainer", "setup")}.");
     }
 

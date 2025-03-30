@@ -17,10 +17,9 @@ public struct Status(string text, ActivityType type = ActivityType.CustomStatus)
     public string Text { get; set; } = text;
 }
 
-public class StatusJob(DiscordSocketClient client, PrometheusService stats, DatabaseContext db, UniversalisSpecificWebsocket websocket)
+public class StatusJob(DiscordSocketClient client, PrometheusService stats, DatabaseContext db)
 {
     private int lastStatus;
-    private List<(int, int)> watchedItems = new();
 
     private readonly Status[] statuses =
     [
@@ -57,46 +56,5 @@ public class StatusJob(DiscordSocketClient client, PrometheusService stats, Data
         {
             Log.Error(e, "Failed to set status");
         }
-    }
-
-    [TypeFilter(typeof(LogExecutionAttribute))]
-    public async Task SetupAlerts()
-    {
-        var listings = await db.Listings
-            .Where(l => l.Flags == ListingFlags.None)
-            .GroupBy(l => l.ItemId)
-            .Select(l => new { ItemId = l.Key, WorldIds = l.Select(x => x.WorldId) })
-            .ToListAsync();
-
-        var newItems = new List<(int, int)>();
-
-        foreach (var listing in listings)
-        {
-            var worldIds = listing.WorldIds.Distinct();
-            foreach (var worldId in worldIds)
-            {
-                var pair = (worldId, listing.ItemId);
-                if (watchedItems.Contains(pair))
-                {
-                    newItems.Add(pair);
-                    continue;
-                }
-
-                newItems.Add(pair);
-                websocket.SendPacket(new SubscribePacket("subscribe", $"sales/add{{world={worldId}, item={listing.ItemId}}}"));
-                Log.Information($"Subscribed to alerts in {worldId} for {listing.ItemId}");
-            }
-        }
-
-        var missing = watchedItems.Except(newItems).ToList();
-
-        foreach (var pair in missing)
-        {
-            websocket.SendPacket(new SubscribePacket("unsubscribe", $"sales/add{{world={pair.Item1}, item={pair.Item2}}}"));
-            Log.Information($"Unsubscribed from alerts in {pair.Item1} for {pair.Item2}");
-
-        }
-
-        watchedItems = newItems;
     }
 }
