@@ -13,8 +13,8 @@ public class LogExecutionAttribute(PrometheusService stats) : JobFilterAttribute
 
         var name = context.BackgroundJob.Job.Method.Name switch
         {
-            nameof(CacheJob.PopulateCharacterCache) => "character_cache",
-            nameof(CacheJob.PopulateListingCache) => "listing_cache",
+            nameof(CacheJob.PopulateCharacterCache) => "character/cache",
+            nameof(CacheJob.PopulateListingCache) => "listing/cache",
             nameof(HandlePacketJob.HandleListingAdd) => "listing/add",
             nameof(HandlePacketJob.HandleListingRemove) => "listing/remove",
             nameof(HandlePacketJob.HandleSaleAdd) => "sale/add",

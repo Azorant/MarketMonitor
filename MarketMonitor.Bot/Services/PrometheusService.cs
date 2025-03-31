@@ -17,14 +17,13 @@ public class PrometheusService
     public PrometheusService()
     {
         Log.Information("Prometheus metrics started");
-        var prefix = Environment.GetEnvironmentVariable("PREFIX") ?? "marketmonitor";
-        Guilds = Metrics.CreateGauge($"{prefix}_guilds", "Guilds bot is in");
-        Commands = Metrics.CreateCounter($"{prefix}_commands_total", "Commands ran", labelNames: ["command"]);
-        Latency = Metrics.CreateGauge($"{prefix}_latency", "Websocket latency");
-        TrackedCharacters = Metrics.CreateGauge($"{prefix}_tracked_characters", "Number of tracked characters");
-        TrackedRetainers = Metrics.CreateGauge($"{prefix}_tracked_retainers", "Number of tracked retainers");
-        TrackedListings = Metrics.CreateGauge($"{prefix}_tracked_listings", "Number of tracked listings");
-        JobExecuted = Metrics.CreateHistogram($"{prefix}_job_executed", "Number of jobs executed and duration", labelNames: ["job"]);
+        Guilds = Metrics.CreateGauge("marketmonitor_guilds", "Guilds bot is in");
+        Commands = Metrics.CreateCounter("marketmonitor_commands_total", "Commands ran", labelNames: ["command"]);
+        Latency = Metrics.CreateGauge("marketmonitor_latency", "Websocket latency");
+        TrackedCharacters = Metrics.CreateGauge("marketmonitor_tracked_characters", "Number of tracked characters");
+        TrackedRetainers = Metrics.CreateGauge("marketmonitor_tracked_retainers", "Number of tracked retainers");
+        TrackedListings = Metrics.CreateGauge("marketmonitor_tracked_listings", "Number of tracked listings");
+        JobExecuted = Metrics.CreateHistogram("marketmonitor_job_executed", "Number of jobs executed and duration", labelNames: ["job"]);
 
         Server = new MetricServer(3400);
         Server.Start();
