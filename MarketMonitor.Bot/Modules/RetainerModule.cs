@@ -1,6 +1,5 @@
 ﻿using Discord;
 using Discord.Interactions;
-using Humanizer;
 using MarketMonitor.Bot.Jobs;
 using MarketMonitor.Bot.Services;
 using MarketMonitor.Database;
@@ -10,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 namespace MarketMonitor.Bot.Modules;
 
 [Group("retainer", "Retainer commands")]
-public class RetainerModule(DatabaseContext db, ApiService api, CacheJob cacheJob, CacheService cacheService) : BaseModule(db)
+public class RetainerModule(DatabaseContext db, ApiService api, CacheJob cacheJob, CacheService cacheService, ImageService imageService) : BaseModule(db)
 {
     [SlashCommand("setup", "Setup a retainer")]
     public async Task SetupRetainer(string name)
@@ -97,26 +96,12 @@ public class RetainerModule(DatabaseContext db, ApiService api, CacheJob cacheJo
     [SlashCommand("recent-sales", "Show recent sales")]
     public async Task Sales()
     {
-        await DeferAsync();
+        await DeferAsync(true);
         var sales = await db.Sales.Include(s => s.Listing).ThenInclude(l => l.Item).Where(l => l.Listing.RetainerOwnerId == Context.User.Id).OrderByDescending(l => l.BoughtAt)
-            .Take(10).ToListAsync();
+            .Take(25).ToListAsync();
 
-        var embed = new EmbedBuilder()
-            .WithTitle("Recent Sales")
-            .WithColor(Color.Blue)
-            .WithCurrentTimestamp();
+        var file = await imageService.CreateRecentSales(sales);
 
-        cacheService.Emotes.TryGetValue("gil", out var gilEmote);
-
-        foreach (var retainer in sales.GroupBy(s => s.Listing.RetainerName))
-        {
-            embed.AddField(retainer.Key,
-               string.Join("\n\n", retainer.Select(s =>
-                    $"{s.Listing.Item.Name}{(gilEmote == null ? "" : $" {gilEmote}")} {s.Listing.Quantity * s.Listing.PricePerUnit:N0}\n{s.BuyerName}\n-# {TimestampTag.FormatFromDateTime(s.BoughtAt.SpecifyUtc(), TimestampTagStyles.Relative)}")));
-        }
-
-
-        if (sales.Count == 0) embed.WithDescription("No sales :(");
-        await FollowupAsync(embed: embed.Build());
+        await FollowupWithFileAsync(file);
     }
 }

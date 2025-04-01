@@ -399,3 +399,5 @@ FodyWeavers.xsd
 
 .env
 MarketMonitor.Database/appsettings.development.json
+
+MarketMonitor.Startup/tmp.png

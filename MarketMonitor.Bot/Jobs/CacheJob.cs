@@ -30,8 +30,6 @@ public class CacheJob(DatabaseContext db, CacheService cache, PrometheusService 
                 await cache.SetRetainer(retainer);
                 retainerCount++;
             }
-
-            Log.Information($"Character cache populated with {characters.Count:N0} characters {retainers.Count:N0} retainers");
         }
         catch (Exception e)
         {
@@ -55,18 +53,14 @@ public class CacheJob(DatabaseContext db, CacheService cache, PrometheusService 
                 .AsNoTracking()
                 .ToListAsync();
 
-            var count = 0;
             foreach (var listing in listings)
             {
                 var worldIds = listing.WorldIds.Distinct();
                 foreach (var worldId in worldIds)
                 {
                     await cache.SetListing(listing.ItemId, worldId);
-                    count++;
                 }
             }
-
-            Log.Information($"Listing cache populated with {count:N0} listings");
         }
         catch (Exception e)
         {

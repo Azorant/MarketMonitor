@@ -8,6 +8,12 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace MarketMonitor.Bot.Jobs;
 
+public struct RemovedListing(string id, double timestamp)
+{
+    public string Id { get; set; } = id;
+    public double Timestamp { get; set; } = timestamp;
+}
+
 public class HandlePacketJob(IServiceProvider serviceProvider)
 {
     [TypeFilter(typeof(LogExecutionAttribute))]
@@ -61,7 +67,11 @@ public class HandlePacketJob(IServiceProvider serviceProvider)
 
                 if (!updated && !relisted)
                     continue;
-                if (updated) existing.IsNotified = false;
+                if (updated)
+                    existing.IsNotified = false;
+
+                existing.UpdatedAt = listing.LastReviewTime.ConvertTimestamp();
+
                 db.Update(existing);
             }
         }
@@ -70,19 +80,21 @@ public class HandlePacketJob(IServiceProvider serviceProvider)
     }
 
     [TypeFilter(typeof(LogExecutionAttribute))]
-    public async Task HandleListingRemove(string retainerId, List<string> listingIds)
+    public async Task HandleListingRemove(string retainerId, List<RemovedListing> removedListings)
     {
         await using var db = serviceProvider.GetRequiredService<DatabaseContext>();
         var retainer = await db.Retainers.AsNoTracking().FirstOrDefaultAsync(r => r.Id == retainerId);
         if (retainer == null) return;
-        var listings = await db.Listings.Where(l => listingIds.Contains(l.Id) && !l.Flags.HasFlag(ListingFlags.Removed)).ToListAsync();
+        var ids = removedListings.Select(l => l.Id).ToList();
+        var listings = await db.Listings.Where(l => ids.Contains(l.Id) && !l.Flags.HasFlag(ListingFlags.Removed)).ToListAsync();
 
         foreach (var listing in listings)
         {
             listing.Flags = listing.Flags.AddFlag(ListingFlags.Removed);
+            listing.UpdatedAt = removedListings.First(l => l.Id == listing.Id).Timestamp.ConvertTimestamp();
             db.Update(listing);
         }
-        
+
         await db.SaveChangesAsync();
     }
 

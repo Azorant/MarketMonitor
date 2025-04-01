@@ -5,7 +5,7 @@ using NetStone.Search.Character;
 
 namespace MarketMonitor.Bot.Services;
 
-public class LodestoneService
+public class LodestoneService(CacheService cacheService)
 {
     public async Task<CharacterSearchEntry?> SearchCharacterAsync(string name, string dc)
     {
@@ -23,5 +23,17 @@ public class LodestoneService
     {
         var lodestoneClient = await LodestoneClient.GetClientAsync();
         return await lodestoneClient.GetCharacter(id);
+    }
+
+    public async Task<string?> FetchAvatarAsync(string name)
+    {
+        var cached = await cacheService.GetAvatar(name);
+        if (cached != null) return cached;
+        var result = await SearchCharacterAsync(name, "Crystal");
+        if (result == null) return null;
+        var character = await result.GetCharacter();
+        var avatar = character?.Avatar?.ToString();
+        if (avatar != null) await cacheService.SetAvatar(name, avatar);
+        return avatar;
     }
 }

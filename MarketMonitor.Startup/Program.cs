@@ -57,6 +57,7 @@ try
         .AddSingleton<CacheService>()
         .AddSingleton<PrometheusService>()
         .AddTransient<StatusService>()
+        .AddTransient<ImageService>()
         .AddHostedService<DiscordClientHost>();
 
     #endregion
