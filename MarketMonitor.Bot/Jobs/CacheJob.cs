@@ -47,7 +47,7 @@ public class CacheJob(DatabaseContext db, CacheService cache, PrometheusService 
         try
         {
             var listings = await db.Listings
-                .Where(l => l.Flags == ListingFlags.None)
+                .Where(l => l.Flags == ListingFlags.None || l.Flags == ListingFlags.Removed)
                 .GroupBy(l => l.ItemId)
                 .Select(l => new { ItemId = l.Key, WorldIds = l.Select(x => x.WorldId) })
                 .AsNoTracking()

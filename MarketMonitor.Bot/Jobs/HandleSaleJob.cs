@@ -25,7 +25,7 @@ public class HandleSaleJob(IServiceProvider serviceProvider)
                 var matches = listing.PricePerUnit == sale.PricePerUnit && sale.Hq == listing.IsHq && sale.Quantity == listing.Quantity;
                 if (!matches) continue;
                 var diff = Math.Abs(sale.Timestamp.ConvertTimestamp().Subtract(listing.UpdatedAt).TotalSeconds);
-                if (diff > TimeSpan.FromHours(6).TotalSeconds) continue;
+                if (diff > TimeSpan.FromHours(24).TotalSeconds) continue;
                 listing.Flags = listing.Flags.AddFlag(ListingFlags.Sold);
                 db.Update(listing);
                 await db.AddAsync(new SaleEntity
