@@ -13,18 +13,27 @@ using Image = SixLabors.ImageSharp.Image;
 
 namespace MarketMonitor.Bot.Services;
 
-public class Row(List<Column> columns, float measurement = 0)
+public class Row(List<Column> columns)
 {
     public List<Column> Columns { get; set; } = columns;
-    public float Height { get; set; } = measurement;
+    public float Height => Columns.Max(c => c.Height);
+    public int HighestColumnIndex => Columns.FindIndex(col => Math.Abs(col.Height - Height) < 1);
 }
 
-public class Column(string text, string? icon = null)
+public class Column(string text, string? icon = null, HorizontalAlignment alignment = HorizontalAlignment.Left)
 {
     public string Text { get; set; } = text;
     public string? Icon { get; set; } = icon;
     public bool HasIcon => !string.IsNullOrEmpty(Icon);
     public float Width { get; set; }
+    public float Height { get; set; }
+    public HorizontalAlignment Alignment { get; set; } = alignment;
+}
+
+public class ImageData
+{
+    public List<Row> Rows { get; set; } = new();
+    public Row HighestRow => Rows.First(row => Math.Abs(row.Height - Rows.Max(r => r.Height)) < 1);
 }
 
 public class ImageService
@@ -38,7 +47,7 @@ public class ImageService
         fontCollection.AddSystemFonts();
         var family = fontCollection.Get("Open Sans");
         NormalFont = family.CreateFont(42, FontStyle.Regular);
-        LargeFont = family.CreateFont(52, FontStyle.Regular);
+        LargeFont = family.CreateFont(48, FontStyle.Regular);
     }
 
     public async Task<FileAttachment> CreateRecentSales(List<SaleEntity> sales)
@@ -47,64 +56,66 @@ public class ImageService
         final.Mutate(x => x.Fill(Color.Black));
 
         var basePadding = 30f;
+        var iconPadding = 40f;
 
-        var rows = new List<Row>();
-        rows.Add(new Row([new("Retainer"), new("Item", string.Empty), new("Quantity"), new("Gil", string.Empty), new("Buyer"), new("Bought")]));
-        rows.AddRange(sales.Select(sale => new Row([
+        var imageData = new ImageData();
+
+        imageData.Rows.Add(new Row([
+            new("Retainer"), new("Item", string.Empty), new("Qty", alignment: HorizontalAlignment.Center), new("Total Gil", string.Empty), new("Buyer"),
+            new("Bought", alignment: HorizontalAlignment.Center)
+        ]));
+        imageData.Rows.AddRange(sales.Select(sale => new Row([
             new Column(sale.Listing.RetainerName),
             new Column(sale.Listing.Item.Name, $"https://v2.xivapi.com/api/asset?path={sale.Listing.Item.Icon}&format=png"),
-            new Column(sale.Listing.Quantity.ToString()),
+            new Column(sale.Listing.Quantity.ToString(), alignment: HorizontalAlignment.Center),
             new Column((sale.Listing.Quantity * sale.Listing.PricePerUnit).ToString("N0"), "https://v2.xivapi.com/api/asset?path=ui/icon/065000/065002_hr1.tex&format=png"),
             new Column(sale.BuyerName),
-            new Column(sale.BoughtAt.Humanize(true))
+            new Column(sale.BoughtAt.Humanize(true), alignment: HorizontalAlignment.Center)
         ])));
 
-        for (var i = 0; i < rows.Count; i++)
+        for (var i = 0; i < imageData.Rows.Count; i++)
         {
-            var row = rows[i];
+            var row = imageData.Rows[i];
             for (var colIndex = 0; colIndex < row.Columns.Count; colIndex++)
             {
                 var column = row.Columns[colIndex];
+                var extraPadding = column.HasIcon ? iconPadding : 0;
                 var measurement = TextMeasurer.MeasureSize(column.Text, new RichTextOptions(i == 0 ? LargeFont : NormalFont)
                 {
-                    HorizontalAlignment = HorizontalAlignment.Left,
+                    HorizontalAlignment = column.Alignment,
                     VerticalAlignment = VerticalAlignment.Top,
-                    WrappingLength = column.Text.Length > 21 ? (float)final.Width / row.Columns.Count : -1,
+                    WrappingLength = column.Text.Length > 21 ? (float)final.Width / row.Columns.Count - extraPadding : -1,
                 });
-                var headerColumn = rows[0].Columns[colIndex];
-                if (measurement.Height > row.Height) row.Height = measurement.Height;
-                if (measurement.Width > headerColumn.Width) headerColumn.Width = measurement.Width + basePadding;
+                var headerColumn = imageData.Rows[0].Columns[colIndex];
+                column.Height = measurement.Height;
+                if (measurement.Width > headerColumn.Width) headerColumn.Width = measurement.Width + basePadding + extraPadding;
             }
         }
 
-        var room = (final.Width - rows[0].Columns.Sum(x => x.Width) - basePadding * 2) / rows[0].Columns.Count;
+        imageData.Rows[0].Columns[imageData.HighestRow.HighestColumnIndex].Width +=
+            final.Width - imageData.Rows[0].Columns.Sum(x => x.Width) - basePadding * 2 - basePadding / 2 * imageData.Rows[0].Columns.Count;
 
-        foreach (var column in rows.First().Columns)
-        {
-            column.Width += room / 1.5f;
-        }
-
-        var xPadding = (final.Width - rows[0].Columns.Sum(x => x.Width)) / rows[0].Columns.Count;
-        var yPadding = (final.Height - rows.Sum(x => x.Height)) / rows.Count;
+        var xPadding = (final.Width - imageData.Rows[0].Columns.Sum(x => x.Width)) / imageData.Rows[0].Columns.Count;
+        var yPadding = (final.Height - imageData.Rows.Sum(x => x.Height)) / imageData.Rows.Count;
         if (xPadding < basePadding) xPadding = basePadding;
         if (yPadding < basePadding) yPadding = basePadding;
         var x = xPadding;
         var y = yPadding;
 
-        var alignStart = rows.Sum(i => i.Height) / final.Height < 0.66;
+        var alignStart = imageData.Rows.Sum(i => i.Height) / final.Height < 0.66;
 
         var imageCache = new Dictionary<string, Image>();
         var httpClient = new HttpClient();
 
-        for (int rowIndex = 0; rowIndex < rows.Count; rowIndex++)
+        for (int rowIndex = 0; rowIndex < imageData.Rows.Count; rowIndex++)
         {
-            var row = rows[rowIndex];
+            var row = imageData.Rows[rowIndex];
             if (final.Height - (y + row.Height) < basePadding) break;
             var tallest = 0f;
             for (int colIndex = 0; colIndex < row.Columns.Count; colIndex++)
             {
                 var column = row.Columns[colIndex];
-                var headerColumn = rows[0].Columns[colIndex];
+                var headerColumn = imageData.Rows[0].Columns[colIndex];
 
                 Image? icon = null;
 
@@ -116,17 +127,25 @@ public class ImageService
                     imageCache.Add(column.Icon!, icon);
                 }
 
-                float extraPadding = column.HasIcon ? 40 : 0;
+                float extraPadding = column.HasIcon ? iconPadding : 0;
+                var xOffset = column.Alignment switch
+                {
+                    HorizontalAlignment.Center => headerColumn.Width / 2,
+                    _ => 0
+                };
+
                 var options = new RichTextOptions(rowIndex == 0 ? LargeFont : NormalFont)
                 {
-                    HorizontalAlignment = HorizontalAlignment.Left,
+                    HorizontalAlignment = column.Alignment,
                     VerticalAlignment = VerticalAlignment.Top,
-                    Origin = new PointF(x + extraPadding, y),
-                    WrappingLength = headerColumn.Width - extraPadding
+                    Origin = new PointF(x + extraPadding + xOffset, y),
+                    WrappingLength = headerColumn.Width
                 };
                 var measure = TextMeasurer.MeasureSize(column.Text, options);
+
                 // final.Mutate(c => c.Fill(Color.Purple, new RectangularPolygon(x, y, headerColumn.Width, row.Height)));
-                // final.Mutate(c => c.Fill(Color.DarkGoldenrod, new RectangularPolygon(x, y, measure.Width, measure.Height)));
+                // final.Mutate(c => c.Fill(Color.DarkGoldenrod, new RectangularPolygon(x + extraPadding, y, measure.Width, measure.Height)));
+
                 if (measure.Height > tallest) tallest = measure.Height;
                 final.Mutate(c => c.DrawText(options, column.Text, Color.White));
                 if (icon != null)

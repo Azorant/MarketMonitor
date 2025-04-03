@@ -83,7 +83,7 @@ public class UniversalisGeneralWebsocket
 
                     foreach (var sale in packet.Sales!)
                     {
-                        BackgroundJob.Schedule(() => saleJob.Handle(packet.Item, packet.World, sale), TimeSpan.FromMinutes(1));
+                        BackgroundJob.Schedule(() => saleJob.Handle(packet.Item, packet.World, sale), TimeSpan.FromMinutes(5));
                     }
                     
                     break;

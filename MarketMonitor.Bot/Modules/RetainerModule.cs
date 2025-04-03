@@ -94,9 +94,9 @@ public class RetainerModule(DatabaseContext db, ApiService api, CacheJob cacheJo
     }
 
     [SlashCommand("recent-sales", "Show recent sales")]
-    public async Task Sales()
+    public async Task Sales(bool ephemeral = true)
     {
-        await DeferAsync(true);
+        await DeferAsync(ephemeral);
         var sales = await db.Sales.Include(s => s.Listing).ThenInclude(l => l.Item).Where(l => l.Listing.RetainerOwnerId == Context.User.Id).OrderByDescending(l => l.BoughtAt)
             .Take(25).ToListAsync();
 
