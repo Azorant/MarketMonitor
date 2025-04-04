@@ -4,6 +4,7 @@ using MarketMonitor.Bot.HostedServices;
 using MarketMonitor.Database.Entities;
 using SixLabors.Fonts;
 using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Drawing;
 using SixLabors.ImageSharp.Drawing.Processing;
 using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.PixelFormats;
@@ -52,16 +53,14 @@ public class ImageService
 
     public async Task<FileAttachment> CreateRecentSales(List<SaleEntity> sales)
     {
-        using Image final = new Image<Bgra32>(1920, 1080);
-        final.Mutate(x => x.Fill(Color.Black));
-
-        var basePadding = 30f;
-        var iconPadding = 40f;
-
         var imageData = new ImageData();
 
         imageData.Rows.Add(new Row([
-            new("Retainer"), new("Item", string.Empty), new("Qty", alignment: HorizontalAlignment.Center), new("Total Gil", string.Empty), new("Buyer"),
+            new("Retainer"),
+            new("Item", string.Empty),
+            new("Qty", alignment: HorizontalAlignment.Center),
+            new("Total Gil", string.Empty),
+            new("Buyer"),
             new("Bought", alignment: HorizontalAlignment.Center)
         ]));
         imageData.Rows.AddRange(sales.Select(sale => new Row([
@@ -72,6 +71,39 @@ public class ImageService
             new Column(sale.BuyerName),
             new Column(sale.BoughtAt.Humanize(true), alignment: HorizontalAlignment.Center)
         ])));
+        return await BuildImage(imageData);
+    }
+
+    public async Task<FileAttachment> CreateRecentPurchases(List<PurchaseEntity> purchases)
+    {
+        var imageData = new ImageData();
+        imageData.Rows.Add(new Row([
+            new("Item", string.Empty),
+            new("HQ", string.Empty, HorizontalAlignment.Center),
+            new("Qty", alignment: HorizontalAlignment.Center),
+            new("Total Gil", string.Empty),
+            new("World"),
+            new("Bought", alignment: HorizontalAlignment.Center)
+        ]));
+        imageData.Rows.AddRange(purchases.Select(p => new Row([
+            new(p.Item.Name, $"https://v2.xivapi.com/api/asset?path={p.Item.Icon}&format=png"),
+            new(string.Empty, p.IsHq ? "./Resources/hq.png" : string.Empty),
+            new(p.Quantity.ToString(), alignment: HorizontalAlignment.Center),
+            new Column((p.Quantity * p.PricePerUnit).ToString("N0"), "https://v2.xivapi.com/api/asset?path=ui/icon/065000/065002_hr1.tex&format=png"),
+            new(p.World.Name),
+            new Column(p.PurchasedAt.Humanize(true), alignment: HorizontalAlignment.Center)
+        ])));
+
+        return await BuildImage(imageData);
+    }
+
+    private async Task<FileAttachment> BuildImage(ImageData imageData)
+    {
+        using Image final = new Image<Bgra32>(1920, 1080);
+        final.Mutate(x => x.Fill(Color.Black));
+
+        var basePadding = 30f;
+        var iconPadding = 40f;
 
         for (var i = 0; i < imageData.Rows.Count; i++)
         {
@@ -121,9 +153,17 @@ public class ImageService
 
                 if (column.HasIcon && !imageCache.TryGetValue(column.Icon!, out icon))
                 {
-                    var httpResult = await httpClient.GetAsync(column.Icon);
-                    await using var resultStream = await httpResult.Content.ReadAsStreamAsync();
-                    icon = (await Image.LoadAsync(resultStream)).CloneAs<Bgra32>();
+                    if (column.Icon!.StartsWith("./Resources"))
+                    {
+                        icon = (await Image.LoadAsync(column.Icon)).CloneAs<Bgra32>();
+                    }
+                    else
+                    {
+                        var httpResult = await httpClient.GetAsync(column.Icon);
+                        await using var resultStream = await httpResult.Content.ReadAsStreamAsync();
+                        icon = (await Image.LoadAsync(resultStream)).CloneAs<Bgra32>();
+                    }
+
                     imageCache.Add(column.Icon!, icon);
                 }
 
@@ -139,9 +179,13 @@ public class ImageService
                     HorizontalAlignment = column.Alignment,
                     VerticalAlignment = VerticalAlignment.Top,
                     Origin = new PointF(x + extraPadding + xOffset, y),
-                    WrappingLength = headerColumn.Width
                 };
                 var measure = TextMeasurer.MeasureSize(column.Text, options);
+                if (measure.Width >= headerColumn.Width)
+                {
+                    options.WrappingLength = headerColumn.Width;
+                    measure = TextMeasurer.MeasureSize(column.Text, options);
+                }
 
                 // final.Mutate(c => c.Fill(Color.Purple, new RectangularPolygon(x, y, headerColumn.Width, row.Height)));
                 // final.Mutate(c => c.Fill(Color.DarkGoldenrod, new RectangularPolygon(x + extraPadding, y, measure.Width, measure.Height)));
@@ -150,8 +194,10 @@ public class ImageService
                 final.Mutate(c => c.DrawText(options, column.Text, Color.White));
                 if (icon != null)
                 {
+                    var offset = string.IsNullOrEmpty(column.Text) ? headerColumn.Width / 2 - 16 : 0;
+                    
                     icon.Mutate(c => c.Resize(new Size(32)));
-                    final.Mutate(c => c.DrawImage(icon, new Point((int)x, (int)y + 8), 1));
+                    final.Mutate(c => c.DrawImage(icon, new Point((int)(x + offset), (int)y + 8), 1));
                 }
 
                 x += headerColumn.Width + xPadding / 1.5f;

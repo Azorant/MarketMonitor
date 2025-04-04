@@ -15,6 +15,11 @@ public class BaseModule(DatabaseContext db) : InteractionModuleBase<SocketIntera
         return db.Characters.FirstOrDefaultAsync(c => c.Id == Context.User.Id);
     }
 
+    internal Task<CharacterEntity?> GetVerifiedCharacterAsync()
+    {
+        return db.Characters.FirstOrDefaultAsync(c => c.Id == Context.User.Id && c.IsVerified);
+    }
+
     internal async Task SendErrorAsync(string error, string title = "Error")
     {
         var embed = new EmbedBuilder()
@@ -32,7 +37,7 @@ public class BaseModule(DatabaseContext db) : InteractionModuleBase<SocketIntera
             await RespondAsync(embed: embed);
         }
     }
-    
+
     internal Task SendSuccessAsync(string description, bool modify = false) => SendSuccessAsync("Success", description, modify);
 
     internal async Task SendSuccessAsync(string title, string description, bool modify = false)

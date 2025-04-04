@@ -15,7 +15,7 @@ public class RetainerModule(DatabaseContext db, ApiService api, CacheJob cacheJo
     public async Task SetupRetainer(string name)
     {
         await DeferAsync(true);
-        var character = await GetCharacterAsync();
+        var character = await GetVerifiedCharacterAsync();
         if (character == null)
         {
             await SendErrorAsync($"You don't have a character.\nSetup one with {await GetCommand("character", "setup")}");
@@ -43,7 +43,7 @@ public class RetainerModule(DatabaseContext db, ApiService api, CacheJob cacheJo
     public async Task VerifyRetainer()
     {
         await DeferAsync(true);
-        var character = await GetCharacterAsync();
+        var character = await GetVerifiedCharacterAsync();
         if (character == null)
         {
             await SendErrorAsync($"You don't have a character.\nSetup one with {await GetCommand("character", "setup")}");
@@ -93,15 +93,20 @@ public class RetainerModule(DatabaseContext db, ApiService api, CacheJob cacheJo
             $"Verified {"retainer".Quantize(verified.Count)} {string.Join(", ", verified)}{(failed.Count == 0 ? string.Empty : $"\n\nFailed to verify {failed.Count} {"retainer".Quantize(failed.Count)}. Make sure they have the proper item listed on the market.\n{string.Join("\n", failed)}")}");
     }
 
-    [SlashCommand("recent-sales", "Show recent sales")]
+    [SlashCommand("sales", "Show recent sales")]
     public async Task Sales(bool ephemeral = true)
     {
         await DeferAsync(ephemeral);
+        var character = await GetVerifiedCharacterAsync();
+        if (character == null)
+        {
+            await SendErrorAsync($"You don't have a character.\nSetup one with {await GetCommand("character", "setup")}");
+            return;
+        }
+        
         var sales = await db.Sales.Include(s => s.Listing).ThenInclude(l => l.Item).Where(l => l.Listing.RetainerOwnerId == Context.User.Id).OrderByDescending(l => l.BoughtAt)
             .Take(25).ToListAsync();
 
-        var file = await imageService.CreateRecentSales(sales);
-
-        await FollowupWithFileAsync(file);
+        await FollowupWithFileAsync(await imageService.CreateRecentSales(sales));
     }
 }
