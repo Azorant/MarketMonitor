@@ -3,12 +3,11 @@ using MarketMonitor.Bot.Jobs;
 using MarketMonitor.Bot.Services;
 using MarketMonitor.Database;
 using MarketMonitor.Database.Entities;
-using Microsoft.EntityFrameworkCore;
 
 namespace MarketMonitor.Bot.Modules;
 
 [Group("character", "Character commands")]
-public class CharacterModule(DatabaseContext db, LodestoneService lodestone, CacheJob cache, ImageService imageService) : BaseModule(db)
+public class CharacterModule(DatabaseContext db, LodestoneService lodestone, CacheJob cache) : BaseModule(db)
 {
     [SlashCommand("setup", "Setup your character")]
     public async Task SetCharacter([MaxLength(64)] string characterName, [Autocomplete<DatacenterAutocompleteHandler>] string datacenter)
@@ -119,21 +118,5 @@ public class CharacterModule(DatabaseContext db, LodestoneService lodestone, Cac
                 ? "Region removed. Undercut notifications will now be datacenter wide."
                 : $"Undercut notifications will now only be for listings in **{worldName}**.");
         }
-    }
-
-    [SlashCommand("purchases", "Show your recent purchases")]
-    public async Task RecentPurchases(bool ephemeral = true)
-    {
-        await DeferAsync(ephemeral);
-        var character = await GetVerifiedCharacterAsync();
-        if (character == null)
-        {
-            await SendErrorAsync($"You don't have a character.\nSetup one with {await GetCommand("character", "setup")}");
-            return;
-        }
-
-        var purchases = await db.Purchases.Include(p => p.Item).Include(p => p.World).Where(p => p.CharacterId == Context.User.Id).OrderByDescending(l => l.PurchasedAt)
-            .Take(25).ToListAsync();
-        await FollowupWithFileAsync(await imageService.CreateRecentPurchases(purchases));
     }
 }

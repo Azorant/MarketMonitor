@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MarketMonitor.Bot.Modules;
 
+[CommandContextType(InteractionContextType.Guild, InteractionContextType.BotDm, InteractionContextType.PrivateChannel)]
 public class BaseModule(DatabaseContext db) : InteractionModuleBase<SocketInteractionContext>
 {
     internal Task<CharacterEntity?> GetCharacterAsync()

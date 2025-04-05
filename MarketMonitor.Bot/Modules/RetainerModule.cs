@@ -1,5 +1,4 @@
-﻿using Discord;
-using Discord.Interactions;
+﻿using Discord.Interactions;
 using MarketMonitor.Bot.Jobs;
 using MarketMonitor.Bot.Services;
 using MarketMonitor.Database;
@@ -9,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 namespace MarketMonitor.Bot.Modules;
 
 [Group("retainer", "Retainer commands")]
-public class RetainerModule(DatabaseContext db, ApiService api, CacheJob cacheJob, CacheService cacheService, ImageService imageService) : BaseModule(db)
+public class RetainerModule(DatabaseContext db, ApiService api, CacheJob cacheJob, CacheService cacheService) : BaseModule(db)
 {
     [SlashCommand("setup", "Setup a retainer")]
     public async Task SetupRetainer(string name)
@@ -77,6 +76,7 @@ public class RetainerModule(DatabaseContext db, ApiService api, CacheJob cacheJo
             retainer.Id = listings.First().RetainerId;
             db.Update(retainer);
             verified.Add(retainer.Name);
+            await cacheService.SetRetainer(retainer.Name);
         }
 
         if (verified.Count == 0)
@@ -91,22 +91,5 @@ public class RetainerModule(DatabaseContext db, ApiService api, CacheJob cacheJo
 
         await SendSuccessAsync(
             $"Verified {"retainer".Quantize(verified.Count)} {string.Join(", ", verified)}{(failed.Count == 0 ? string.Empty : $"\n\nFailed to verify {failed.Count} {"retainer".Quantize(failed.Count)}. Make sure they have the proper item listed on the market.\n{string.Join("\n", failed)}")}");
-    }
-
-    [SlashCommand("sales", "Show recent sales")]
-    public async Task Sales(bool ephemeral = true)
-    {
-        await DeferAsync(ephemeral);
-        var character = await GetVerifiedCharacterAsync();
-        if (character == null)
-        {
-            await SendErrorAsync($"You don't have a character.\nSetup one with {await GetCommand("character", "setup")}");
-            return;
-        }
-        
-        var sales = await db.Sales.Include(s => s.Listing).ThenInclude(l => l.Item).Where(l => l.Listing.RetainerOwnerId == Context.User.Id).OrderByDescending(l => l.BoughtAt)
-            .Take(25).ToListAsync();
-
-        await FollowupWithFileAsync(await imageService.CreateRecentSales(sales));
     }
 }
