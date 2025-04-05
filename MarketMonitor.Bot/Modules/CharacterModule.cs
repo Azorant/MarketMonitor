@@ -52,7 +52,7 @@ public class CharacterModule(DatabaseContext db, LodestoneService lodestone, Cac
     public async Task VerifyCharacter()
     {
         await DeferAsync(true);
-        var character = await GetVerifiedCharacterAsync();
+        var character = await GetCharacterAsync();
         if (character == null)
         {
             await SendErrorAsync($"You don't have a character.\nSetup one with {await GetCommand("character", "setup")}");
@@ -66,7 +66,7 @@ public class CharacterModule(DatabaseContext db, LodestoneService lodestone, Cac
             return;
         }
 
-        if (fetchedCharacter.Bio != character.VerificationValue.ToString())
+        if (!fetchedCharacter.Bio.Contains(character.VerificationValue.ToString()!))
         {
             await SendErrorAsync($"Bio doesn't contain the verification value `{character.VerificationValue.ToString()}`");
             return;
