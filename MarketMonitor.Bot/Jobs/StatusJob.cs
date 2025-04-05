@@ -50,7 +50,7 @@ public class StatusJob(DiscordSocketClient client, PrometheusService stats, Data
             lastStatus++;
             if (lastStatus == statuses.Length) lastStatus = 0;
             stats.Latency.Set(client.Latency);
-            stats.TrackedListings.Set(await db.Listings.CountAsync());
+            stats.TrackedListings.Set(await db.Listings.CountAsync(l => l.Flags == ListingFlags.None));
         }
         catch (Exception e)
         {

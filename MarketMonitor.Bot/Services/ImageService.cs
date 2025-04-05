@@ -132,7 +132,7 @@ public class ImageService
         if (xPadding < basePadding) xPadding = basePadding;
         if (yPadding < basePadding) yPadding = basePadding;
         var x = xPadding;
-        var y = yPadding;
+        var y = basePadding;
 
         var alignStart = imageData.Rows.Sum(i => i.Height) / final.Height < 0.66;
 
@@ -142,7 +142,7 @@ public class ImageService
         for (int rowIndex = 0; rowIndex < imageData.Rows.Count; rowIndex++)
         {
             var row = imageData.Rows[rowIndex];
-            if (final.Height - (y + row.Height) < basePadding) break;
+            if (rowIndex != 0 && final.Height - (y + row.Height) < basePadding) break;
             var tallest = 0f;
             for (int colIndex = 0; colIndex < row.Columns.Count; colIndex++)
             {
@@ -195,7 +195,7 @@ public class ImageService
                 if (icon != null)
                 {
                     var offset = string.IsNullOrEmpty(column.Text) ? headerColumn.Width / 2 - 16 : 0;
-                    
+
                     icon.Mutate(c => c.Resize(new Size(32)));
                     final.Mutate(c => c.DrawImage(icon, new Point((int)(x + offset), (int)y + 8), 1));
                 }
@@ -207,6 +207,17 @@ public class ImageService
 
             y += (alignStart ? row.Height + basePadding : row.Height + yPadding) - (heightDiff >= basePadding ? heightDiff : 0);
             x = xPadding;
+        }
+
+        if (imageData.Rows.Count <= 1)
+        {
+            var options = new RichTextOptions(LargeFont)
+            {
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                Origin = new PointF(final.Width / 2, final.Height / 2),
+            };
+            final.Mutate(c => c.DrawText(options, "No records", Color.White));
         }
 
         if (DiscordClientHost.IsDebug()) await final.SaveAsPngAsync("./tmp.png");
