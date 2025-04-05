@@ -1,11 +1,12 @@
-﻿using Discord.Interactions;
+﻿using Discord;
+using Discord.Interactions;
 using MarketMonitor.Bot.Services;
 using MarketMonitor.Database;
 using Microsoft.EntityFrameworkCore;
 
 namespace MarketMonitor.Bot.Modules;
 
-[Group("market","Market related commands")]
+[Group("market","Market related commands"), CommandContextType(InteractionContextType.Guild, InteractionContextType.BotDm, InteractionContextType.PrivateChannel), IntegrationType(ApplicationIntegrationType.GuildInstall)]
 public class MarketMonitor(DatabaseContext db, ImageService imageService) : BaseModule(db)
 {
     [SlashCommand("sales", "Show recent retainer sales")]

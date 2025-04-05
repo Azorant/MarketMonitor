@@ -1,4 +1,5 @@
-﻿using Discord.Interactions;
+﻿using Discord;
+using Discord.Interactions;
 using MarketMonitor.Bot.Jobs;
 using MarketMonitor.Bot.Services;
 using MarketMonitor.Database;
@@ -7,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MarketMonitor.Bot.Modules;
 
-[Group("retainer", "Retainer commands")]
+[Group("retainer", "Retainer commands"), CommandContextType(InteractionContextType.Guild, InteractionContextType.BotDm, InteractionContextType.PrivateChannel), IntegrationType(ApplicationIntegrationType.GuildInstall)]
 public class RetainerModule(DatabaseContext db, ApiService api, CacheJob cacheJob, CacheService cacheService) : BaseModule(db)
 {
     [SlashCommand("setup", "Setup a retainer")]

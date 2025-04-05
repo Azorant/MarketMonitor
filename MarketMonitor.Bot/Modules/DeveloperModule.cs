@@ -6,7 +6,7 @@ using MarketMonitor.Database;
 
 namespace MarketMonitor.Bot.Modules;
 
-[Group("developer", "Developer Module"), RequireOwner]
+[Group("developer", "Developer Module"), RequireOwner, CommandContextType(InteractionContextType.Guild, InteractionContextType.BotDm, InteractionContextType.PrivateChannel), IntegrationType(ApplicationIntegrationType.UserInstall)]
 public class DeveloperModule(DatabaseContext db) : BaseModule(db)
 {
     [Group("update", "update")]

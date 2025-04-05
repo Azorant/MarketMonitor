@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MarketMonitor.Bot.Modules;
 
+[CommandContextType(InteractionContextType.Guild, InteractionContextType.BotDm, InteractionContextType.PrivateChannel), IntegrationType(ApplicationIntegrationType.GuildInstall)]
 public class MiscModule(ApiService api) : InteractionModuleBase<SocketInteractionContext>
 {
     [SlashCommand("about", "Information about the bot")]
@@ -35,19 +36,4 @@ public class MiscModule(ApiService api) : InteractionModuleBase<SocketInteractio
     public async Task InviteCommand()
         => await RespondAsync(
             $"https://discord.com/api/oauth2/authorize?client_id={Context.Client.CurrentUser.Id}&scope=bot%20applications.commands");
-
-    [SlashCommand("help", "Commands")]
-    public async Task HelpCommand()
-    {
-        var commands = await (DiscordClientHost.IsDebug() ? Context.Guild.GetApplicationCommandsAsync() : Context.Client.GetGlobalApplicationCommandsAsync());
-
-        var embed = new EmbedBuilder()
-            .WithTitle("Commands")
-            .WithColor(Color.Blue)
-            .WithDescription(string.Join("\n", commands.Select(c => $"</{c.Name}:{c.Id}>")))
-            .WithFooter(Format.UsernameAndDiscriminator(Context.User, false), Context.User.GetAvatarUrl())
-            .Build();
-
-        await RespondAsync(embed: embed);
-    }
 }

@@ -1,4 +1,5 @@
-﻿using Discord.Interactions;
+﻿using Discord;
+using Discord.Interactions;
 using MarketMonitor.Bot.Jobs;
 using MarketMonitor.Bot.Services;
 using MarketMonitor.Database;
@@ -6,7 +7,7 @@ using MarketMonitor.Database.Entities;
 
 namespace MarketMonitor.Bot.Modules;
 
-[Group("character", "Character commands")]
+[Group("character", "Character commands"), CommandContextType(InteractionContextType.Guild, InteractionContextType.BotDm, InteractionContextType.PrivateChannel), IntegrationType(ApplicationIntegrationType.GuildInstall)]
 public class CharacterModule(DatabaseContext db, LodestoneService lodestone, CacheJob cache) : BaseModule(db)
 {
     [SlashCommand("setup", "Setup your character")]
