@@ -1,5 +1,6 @@
 ﻿using Discord;
 using Discord.Interactions;
+using Humanizer;
 using MarketMonitor.Bot.Services;
 using MarketMonitor.Database;
 using Microsoft.EntityFrameworkCore;
@@ -69,7 +70,7 @@ public class MarketModule(DatabaseContext db, ImageService imageService, CacheSe
 
         await FollowupAsync(embed: new EmbedBuilder()
             .WithTitle("Total Gil")
-            .WithDescription($"Showing gil balance for the past {"day".Quantize(timeframe)}")
+            .WithDescription($"Showing gil balance for the past {"day".ToQuantity(timeframe)}")
             .WithColor(Color.Teal)
             .AddField("Spent", $"{emoji}{spent:N0}")
             .AddField("Sold", $"{emoji}{sold:N0}")
