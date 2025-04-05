@@ -33,4 +33,5 @@ public class SaleData
     public int Quantity { get; set; }
     public double Timestamp { get; set; }
     public string BuyerName { get; set; }
+    public int? WorldId { get; set; }
 }

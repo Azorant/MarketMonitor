@@ -15,13 +15,13 @@ public class LogExecutionAttribute(PrometheusService stats) : JobFilterAttribute
         {
             nameof(CacheJob.PopulateCharacterCache) => "character/cache",
             nameof(CacheJob.PopulateListingCache) => "listing/cache",
-            nameof(HandlePacketJob.HandleListingAdd) => "listing/add",
-            nameof(HandlePacketJob.HandleListingRemove) => "listing/remove",
-            nameof(HandlePacketJob.HandleSaleAdd) => "sale/add",
+            nameof(PacketJob.HandleListingAdd) => "listing/add",
+            nameof(PacketJob.HandleListingRemove) => "listing/remove",
+            nameof(PacketJob.HandlePurchaseAdd) => "purchase/add",
+            nameof(PacketJob.HandleSaleAdd) => "sale/add",
             nameof(HealthJob.CheckHealth) => "health",
-            nameof(MarketJob.CheckMarket) => "market",
+            nameof(MarketJob.CheckListings) => "market/listings",
             nameof(StatusJob.SetStatus) => "status",
-            nameof(HandleSaleJob.Handle) => "sales",
             _ => context.BackgroundJob.Job.Method.Name
         };
 

@@ -1,5 +1,6 @@
 using Discord;
 using Discord.WebSocket;
+using Hangfire;
 using MarketMonitor.Bot.Services;
 using MarketMonitor.Database;
 using MarketMonitor.Database.Models;
@@ -9,16 +10,21 @@ using Serilog;
 
 namespace MarketMonitor.Bot.Jobs;
 
-public class MarketJob(DatabaseContext db, ApiService api, DiscordSocketClient client, CacheService cacheService)
+public class MarketJob(DatabaseContext db, ApiService api, DiscordSocketClient client, CacheService cacheService, PacketJob job)
 {
     [TypeFilter(typeof(LogExecutionAttribute))]
-    public async Task CheckMarket()
+    public async Task CheckListings()
     {
         try
         {
             cacheService.Emotes.TryGetValue("gil", out var gilEmote);
 
-            var listingGroups = await db.Listings.Include(l => l.World).Include(l => l.Item).Include(l => l.Retainer).ThenInclude(r => r.Owner).Where(l => !l.IsNotified && l.Flags == ListingFlags.None)
+            var listingGroups = await db.Listings
+                .Include(l => l.World)
+                .Include(l => l.Item)
+                .Include(l => l.Retainer)
+                .ThenInclude(r => r.Owner)
+                .Where(l => l.Flags == ListingFlags.None)
                 .GroupBy(l => l.ItemId).ToListAsync();
 
             var notifications = new Dictionary<ulong, Dictionary<string, List<string>>>();
@@ -29,9 +35,47 @@ public class MarketJob(DatabaseContext db, ApiService api, DiscordSocketClient c
                 var dcGroups = listings.GroupBy(l => l.World.DatacenterName);
                 foreach (var dcGroup in dcGroups)
                 {
-                    var market = await api.FetchItem(itemId, dcGroup.Key);
+                    var market = await api.FetchItem(itemId, dcGroup.Key, 50);
 
-                    var retainerGroups = dcGroup.GroupBy(l => new { l.RetainerName, l.RetainerOwnerId });
+                    // Check for stale listings
+                    foreach (var listing in dcGroup)
+                    {
+                        var matchingListing = market.Listings.FirstOrDefault(l => l.ListingId == listing.Id);
+                        // Has matching listing meaning still on market
+                        if (matchingListing != null)
+                        {
+                            listing.UpdatedAt = matchingListing.LastReviewTime.ConvertTimestamp();
+                            if (listing.Quantity != matchingListing.Quantity || listing.PricePerUnit != matchingListing.PricePerUnit)
+                            {
+                                listing.Quantity = matchingListing.Quantity;
+                                listing.PricePerUnit = matchingListing.PricePerUnit;
+                                listing.IsNotified = false;
+                            }
+
+                            db.Update(listing);
+                        }
+                        else
+                        {
+                            var matchingSale = market.RecentHistory.FirstOrDefault(h =>
+                                h.PricePerUnit == listing.PricePerUnit &&
+                                h.Quantity == listing.Quantity &&
+                                h.WorldId == listing.WorldId &&
+                                Math.Abs(h.Timestamp.ConvertTimestamp().Subtract(listing.UpdatedAt).TotalSeconds) <= TimeSpan.FromHours(6).TotalSeconds);
+                            // Mark listing as removed
+                            listing.Flags = listing.Flags.AddFlag(ListingFlags.Removed);
+                            listing.UpdatedAt = DateTime.UtcNow;
+                            db.Update(listing);
+
+                            if (matchingSale == null) continue;
+
+                            // Enqueue sale 
+                            BackgroundJob.Schedule(() => job.HandleSaleAdd(itemId, listing.WorldId, matchingSale), TimeSpan.FromMinutes(5));
+                            market.RecentHistory.Remove(matchingSale);
+                        }
+                    }
+
+                    // Check for undercuts
+                    var retainerGroups = dcGroup.Where(l => !l.Flags.HasFlag(ListingFlags.Removed) && !l.IsNotified).GroupBy(l => new { l.RetainerName, l.RetainerOwnerId });
                     foreach (var retainerGroup in retainerGroups)
                     {
                         var retainer = retainerGroup.OrderBy(r => r.PricePerUnit).First();

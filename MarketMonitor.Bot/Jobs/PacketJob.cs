@@ -1,10 +1,12 @@
-﻿using MarketMonitor.Bot.Models.Universalis;
+﻿using Hangfire;
+using MarketMonitor.Bot.Models.Universalis;
 using MarketMonitor.Database;
 using MarketMonitor.Database.Entities;
 using MarketMonitor.Database.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Serilog;
 
 namespace MarketMonitor.Bot.Jobs;
 
@@ -14,7 +16,7 @@ public struct RemovedListing(string id, double timestamp)
     public double Timestamp { get; set; } = timestamp;
 }
 
-public class HandlePacketJob(IServiceProvider serviceProvider)
+public class PacketJob(IServiceProvider serviceProvider)
 {
     [TypeFilter(typeof(LogExecutionAttribute))]
     public async Task HandleListingAdd(string retainerId, int itemId, int worldId, List<ListingData> listings)
@@ -99,7 +101,7 @@ public class HandlePacketJob(IServiceProvider serviceProvider)
     }
 
     [TypeFilter(typeof(LogExecutionAttribute))]
-    public async Task HandleSaleAdd(ulong buyerId, int itemId, int worldId, List<SaleData> sales)
+    public async Task HandlePurchaseAdd(ulong buyerId, int itemId, int worldId, List<SaleData> sales)
     {
         await using var db = serviceProvider.GetRequiredService<DatabaseContext>();
         await db.AddRangeAsync(sales.Select(sale => new PurchaseEntity
@@ -113,5 +115,37 @@ public class HandlePacketJob(IServiceProvider serviceProvider)
             CharacterId = buyerId
         }));
         await db.SaveChangesAsync();
+    }
+    
+    [DisableConcurrentExecution("sales", 60)]
+    public async Task HandleSaleAdd(int itemId, int worldId, SaleData sale)
+    {
+        try
+        {
+            var db = serviceProvider.GetRequiredService<DatabaseContext>();
+            var listings = await db.Listings.Where(l => l.ItemId == itemId && l.WorldId == worldId && l.Flags == ListingFlags.Removed).ToListAsync();
+
+            foreach (var listing in listings)
+            {
+                var matches = listing.PricePerUnit == sale.PricePerUnit && sale.Hq == listing.IsHq && sale.Quantity == listing.Quantity;
+                if (!matches) continue;
+                var diff = Math.Abs(sale.Timestamp.ConvertTimestamp().Subtract(listing.UpdatedAt).TotalSeconds);
+                if (diff > TimeSpan.FromHours(24).TotalSeconds) continue;
+                listing.Flags = listing.Flags.AddFlag(ListingFlags.Sold);
+                db.Update(listing);
+                await db.AddAsync(new SaleEntity
+                {
+                    BuyerName = sale.BuyerName,
+                    ListingId = listing.Id,
+                    BoughtAt = sale.Timestamp.ConvertTimestamp()
+                });
+                await db.SaveChangesAsync();
+                break;
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error while handling sales");
+        }
     }
 }

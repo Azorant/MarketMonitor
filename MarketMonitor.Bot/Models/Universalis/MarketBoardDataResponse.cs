@@ -5,4 +5,5 @@ public class MarketBoardDataResponse
     public int ItemId { get; set; }
     public double LastUploadTime { get; set; }
     public List<ListingData> Listings { get; set; }
+    public List<SaleData> RecentHistory { get; set; }
 }
