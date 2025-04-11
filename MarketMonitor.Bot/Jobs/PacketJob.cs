@@ -1,5 +1,8 @@
-﻿using Hangfire;
+﻿using Discord;
+using Discord.WebSocket;
+using Hangfire;
 using MarketMonitor.Bot.Models.Universalis;
+using MarketMonitor.Bot.Services;
 using MarketMonitor.Database;
 using MarketMonitor.Database.Entities;
 using MarketMonitor.Database.Models;
@@ -116,7 +119,7 @@ public class PacketJob(IServiceProvider serviceProvider)
         }));
         await db.SaveChangesAsync();
     }
-    
+
     [DisableConcurrentExecution("sales", 60)]
     public async Task HandleSaleAdd(int itemId, int worldId, SaleData sale)
     {
@@ -125,12 +128,15 @@ public class PacketJob(IServiceProvider serviceProvider)
             var db = serviceProvider.GetRequiredService<DatabaseContext>();
             var listings = await db.Listings.Where(l => l.ItemId == itemId && l.WorldId == worldId && l.Flags == ListingFlags.Removed).ToListAsync();
 
+            ListingEntity? listingEntity = null;
+
             foreach (var listing in listings)
             {
                 var matches = listing.PricePerUnit == sale.PricePerUnit && sale.Hq == listing.IsHq && sale.Quantity == listing.Quantity;
                 if (!matches) continue;
                 var diff = Math.Abs(sale.Timestamp.ConvertTimestamp().Subtract(listing.UpdatedAt).TotalSeconds);
                 if (diff > TimeSpan.FromHours(24).TotalSeconds) continue;
+                listingEntity = listing;
                 listing.Flags = listing.Flags.AddFlag(ListingFlags.Sold);
                 db.Update(listing);
                 await db.AddAsync(new SaleEntity
@@ -141,6 +147,35 @@ public class PacketJob(IServiceProvider serviceProvider)
                 });
                 await db.SaveChangesAsync();
                 break;
+            }
+
+            if (listingEntity != null)
+            {
+                try
+                {
+                    var character = await db.Characters.FirstOrDefaultAsync(u => u.Id == listingEntity.RetainerOwnerId);
+                    if (character?.SaleNotification != true) return;
+                    var client = serviceProvider.GetRequiredService<DiscordSocketClient>();
+                    var user = await client.GetUserAsync(character.Id);
+                    if (user == null) return;
+                    var channel = await user.CreateDMChannelAsync();
+                    if (channel == null) return;
+                    var item = await db.Items.FirstAsync(i => i.Id == itemId);
+                    var cache = serviceProvider.GetRequiredService<CacheService>();
+                    cache.Emotes.TryGetValue("gil", out var emote);
+                    await channel.SendMessageAsync(embed: new EmbedBuilder()
+                        .WithTitle("Sale Notification")
+                        .AddField("Item", item.Name, true)
+                        .AddField("Buyer", sale.BuyerName, true)
+                        .AddField("Gil", $"{(emote != null ? $"{emote} " : "")}{listingEntity.Quantity * listingEntity.PricePerUnit:N0}", true)
+                        .WithColor(Color.Green)
+                        .WithTimestamp(sale.Timestamp.ConvertTimestamp())
+                        .Build());
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Unable to send sale notification");
+                }
             }
         }
         catch (Exception ex)

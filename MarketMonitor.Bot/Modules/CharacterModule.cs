@@ -80,11 +80,11 @@ public class CharacterModule(DatabaseContext db, LodestoneService lodestone, Cac
             $"Character verified.\nIf you want to track sale history or get notifications when undercut on the market run {await GetCommand("retainer", "setup")}.");
     }
 
-    [Group("region", "Region commands")]
-    public class RegionModule(DatabaseContext db) : BaseModule(db)
+    [Group("notifications", "Notification commands")]
+    public class NotificationModule(DatabaseContext db) : BaseModule(db)
     {
-        [SlashCommand("notification", "Set the region used for undercut notifications")]
-        public async Task NotificationRegion([Autocomplete<WorldAutocompleteHandler>] int? world = null)
+        [SlashCommand("region", "Set the region used for undercut notifications")]
+        public async Task SetRegion([Autocomplete<WorldAutocompleteHandler>, Summary(description: "Which world to alert for; leave empty to reset to DC wide")] int? world = null)
         {
             await DeferAsync(true);
             var character = await GetVerifiedCharacterAsync();
@@ -118,6 +118,23 @@ public class CharacterModule(DatabaseContext db, LodestoneService lodestone, Cac
             await SendSuccessAsync(world == null
                 ? "Region removed. Undercut notifications will now be datacenter wide."
                 : $"Undercut notifications will now only be for listings in **{worldName}**.");
+        }
+
+        [SlashCommand("sale", "Enable or disable sale notifications")]
+        public async Task SetSaleNotification(bool enabled)
+        {
+            await DeferAsync(true);
+            var character = await GetVerifiedCharacterAsync();
+            if (character == null)
+            {
+                await SendErrorAsync($"You don't have a character.\nSetup one with {await GetCommand("character", "setup")}");
+                return;
+            }
+            
+            character.SaleNotification = enabled;
+            db.Update(character);
+            await db.SaveChangesAsync();
+            await SendSuccessAsync($"You will {(enabled ? "now" : "no longer")} get sale notifications.");
         }
     }
 }
