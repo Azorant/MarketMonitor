@@ -23,7 +23,11 @@ public class PrometheusService
         TrackedCharacters = Metrics.CreateGauge("marketmonitor_tracked_characters", "Number of tracked characters");
         TrackedRetainers = Metrics.CreateGauge("marketmonitor_tracked_retainers", "Number of tracked retainers");
         TrackedListings = Metrics.CreateGauge("marketmonitor_tracked_listings", "Number of tracked listings");
-        JobExecuted = Metrics.CreateHistogram("marketmonitor_job_executed", "Number of jobs executed and duration", labelNames: ["job"]);
+        JobExecuted = Metrics.CreateHistogram("marketmonitor_job_executed", "Number of jobs executed and duration", new HistogramConfiguration
+        {
+            Buckets = Histogram.PowersOfTenDividedBuckets(0, 3, 12),
+            LabelNames = ["job"],
+        });
 
         Server = new MetricServer(3400);
         Server.Start();
