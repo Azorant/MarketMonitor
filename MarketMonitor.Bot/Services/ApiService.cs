@@ -130,5 +130,7 @@ public class ApiService(DatabaseContext db)
         await context.Interaction.ModifyOriginalResponseAsync(m => m.Embed = statusEmbed.Build());
     }
 
-    public Task<MarketBoardDataResponse> FetchItem(int itemId, string region, int entries = 5) => RequestUniversalis<MarketBoardDataResponse>($"/{region}/{itemId}?entries={entries}");
+    public Task<MarketBoardDataResponse> FetchItem(int itemId, string region, int entries = 5, TimeSpan? entriesWithin = null) =>
+        RequestUniversalis<MarketBoardDataResponse>(
+            $"/{region}/{itemId}?entries={entries}{(entriesWithin == null ? string.Empty : $"&entriesWithin={entriesWithin.Value.TotalSeconds}")}");
 }

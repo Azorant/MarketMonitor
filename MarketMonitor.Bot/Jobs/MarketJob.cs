@@ -1,6 +1,7 @@
 using Discord;
 using Discord.WebSocket;
 using Hangfire;
+using MarketMonitor.Bot.Models.Universalis;
 using MarketMonitor.Bot.Services;
 using MarketMonitor.Database;
 using MarketMonitor.Database.Models;
@@ -54,11 +55,24 @@ public class MarketJob(DatabaseContext db, ApiService api, DiscordSocketClient c
                     }
                     else
                     {
-                        var matchingSale = market.RecentHistory.FirstOrDefault(h =>
-                            h.PricePerUnit == listing.PricePerUnit &&
-                            h.Quantity == listing.Quantity &&
-                            h.WorldId == listing.WorldId &&
-                            Math.Abs(h.Timestamp.ConvertTimestamp().Subtract(listing.UpdatedAt).TotalSeconds) <= TimeSpan.FromHours(4).TotalSeconds);
+                        SaleData? matchingSale = null;
+                        while (matchingSale == null || market.RecentHistory.Count > 0)
+                        {
+                            var match = market.RecentHistory.OrderByDescending(h => h.Timestamp).FirstOrDefault(h =>
+                                h.PricePerUnit == listing.PricePerUnit &&
+                                h.Quantity == listing.Quantity &&
+                                h.WorldId == listing.WorldId &&
+                                h.Hq == listing.IsHq &&
+                                Math.Abs(h.Timestamp.ConvertTimestamp().Subtract(listing.UpdatedAt).TotalSeconds) <= TimeSpan.FromHours(6).TotalSeconds
+                            );
+                            if (match == null) break;
+
+                            var alreadyHandled = await cacheService.MarketSaleCache(itemId, dcGroup.Key, match);
+                            if (!alreadyHandled) matchingSale = match;
+
+                            market.RecentHistory.Remove(match);
+                        }
+
                         // Mark listing as removed
                         listing.Flags = listing.Flags.AddFlag(ListingFlags.Removed);
                         listing.UpdatedAt = DateTime.UtcNow;
@@ -68,7 +82,6 @@ public class MarketJob(DatabaseContext db, ApiService api, DiscordSocketClient c
 
                         // Enqueue sale 
                         BackgroundJob.Schedule(() => job.HandleSaleAdd(itemId, listing.WorldId, matchingSale), TimeSpan.FromMinutes(5));
-                        market.RecentHistory.Remove(matchingSale);
                     }
                 }
 
