@@ -36,54 +36,54 @@ public class MarketJob(DatabaseContext db, ApiService api, DiscordSocketClient c
             {
                 var market = await api.FetchItem(itemId, dcGroup.Key, 50);
 
-                // Check for stale listings
-                foreach (var listing in dcGroup)
-                {
-                    var matchingListing = market.Listings.FirstOrDefault(l => l.ListingId == listing.Id);
-                    // Has matching listing meaning still on market
-                    if (matchingListing != null)
-                    {
-                        listing.UpdatedAt = matchingListing.LastReviewTime.ConvertTimestamp();
-                        if (listing.Quantity != matchingListing.Quantity || listing.PricePerUnit != matchingListing.PricePerUnit)
-                        {
-                            listing.Quantity = matchingListing.Quantity;
-                            listing.PricePerUnit = matchingListing.PricePerUnit;
-                            listing.IsNotified = false;
-                        }
-
-                        db.Update(listing);
-                    }
-                    else
-                    {
-                        SaleData? matchingSale = null;
-                        while (matchingSale == null || market.RecentHistory.Count > 0)
-                        {
-                            var match = market.RecentHistory.OrderByDescending(h => h.Timestamp).FirstOrDefault(h =>
-                                h.PricePerUnit == listing.PricePerUnit &&
-                                h.Quantity == listing.Quantity &&
-                                h.WorldId == listing.WorldId &&
-                                h.Hq == listing.IsHq &&
-                                Math.Abs(h.Timestamp.ConvertTimestamp().Subtract(listing.UpdatedAt).TotalSeconds) <= TimeSpan.FromHours(6).TotalSeconds
-                            );
-                            if (match == null) break;
-
-                            var alreadyHandled = await cacheService.MarketSaleCache(itemId, dcGroup.Key, match);
-                            if (!alreadyHandled) matchingSale = match;
-
-                            market.RecentHistory.Remove(match);
-                        }
-
-                        // Mark listing as removed
-                        listing.Flags = listing.Flags.AddFlag(ListingFlags.Removed);
-                        listing.UpdatedAt = DateTime.UtcNow;
-                        db.Update(listing);
-
-                        if (matchingSale == null) continue;
-
-                        // Enqueue sale 
-                        BackgroundJob.Schedule(() => job.HandleSaleAdd(itemId, listing.WorldId, matchingSale), TimeSpan.FromMinutes(5));
-                    }
-                }
+                // Check for stale listings 
+                // foreach (var listing in dcGroup)
+                // {
+                //     var matchingListing = market.Listings.FirstOrDefault(l => l.ListingId == listing.Id);
+                //     // Has matching listing meaning still on market
+                //     if (matchingListing != null)
+                //     {
+                //         listing.UpdatedAt = matchingListing.LastReviewTime.ConvertTimestamp();
+                //         if (listing.Quantity != matchingListing.Quantity || listing.PricePerUnit != matchingListing.PricePerUnit)
+                //         {
+                //             listing.Quantity = matchingListing.Quantity;
+                //             listing.PricePerUnit = matchingListing.PricePerUnit;
+                //             listing.IsNotified = false;
+                //         }
+                //
+                //         db.Update(listing);
+                //     }
+                //     else
+                //     {
+                //         SaleData? matchingSale = null;
+                //         while (matchingSale == null || market.RecentHistory.Count > 0)
+                //         {
+                //             var match = market.RecentHistory.OrderByDescending(h => h.Timestamp).FirstOrDefault(h =>
+                //                 h.PricePerUnit == listing.PricePerUnit &&
+                //                 h.Quantity == listing.Quantity &&
+                //                 h.WorldId == listing.WorldId &&
+                //                 h.Hq == listing.IsHq &&
+                //                 Math.Abs(h.Timestamp.ConvertTimestamp().Subtract(listing.UpdatedAt).TotalSeconds) <= TimeSpan.FromHours(6).TotalSeconds
+                //             );
+                //             if (match == null) break;
+                //
+                //             var alreadyHandled = await cacheService.MarketSaleCache(itemId, dcGroup.Key, match);
+                //             if (!alreadyHandled) matchingSale = match;
+                //
+                //             market.RecentHistory.Remove(match);
+                //         }
+                //
+                //         // Mark listing as removed
+                //         listing.Flags = listing.Flags.AddFlag(ListingFlags.Removed);
+                //         listing.UpdatedAt = DateTime.UtcNow;
+                //         db.Update(listing);
+                //
+                //         if (matchingSale == null) continue;
+                //
+                //         // Enqueue sale 
+                //         BackgroundJob.Schedule(() => job.HandleSaleAdd(itemId, listing.WorldId, matchingSale), TimeSpan.FromMinutes(5));
+                //     }
+                // }
 
                 // Check for undercuts
                 var retainerGroups = dcGroup.Where(l => !l.Flags.HasFlag(ListingFlags.Removed) && !l.IsNotified).GroupBy(l => new { l.RetainerName, l.RetainerOwnerId });
