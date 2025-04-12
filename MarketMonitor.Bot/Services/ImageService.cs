@@ -64,18 +64,18 @@ public class ImageService
         var imageData = new ImageData("sales");
 
         imageData.Rows.Add(new Row([
-            new("Retainer"),
             new("Item", string.Empty),
             new("Qty", alignment: HorizontalAlignment.Center),
             new("Total Gil", string.Empty),
+            new("Retainer"),
             new("Buyer"),
             new("Bought", alignment: HorizontalAlignment.Center)
         ]));
         imageData.Rows.AddRange(sales.Select(sale => new Row([
-            new Column(sale.Listing.RetainerName),
             new Column(sale.Listing.Item.Name, sale.Listing.Item.IconPath),
             new Column(sale.Listing.Quantity.ToString(), alignment: HorizontalAlignment.Center),
             new Column((sale.Listing.Quantity * sale.Listing.PricePerUnit).ToString("N0"), "ui/icon/065000/065002_hr1.tex"),
+            new Column(sale.Listing.RetainerName),
             new Column(sale.BuyerName),
             new Column(sale.BoughtAt.Humanize(true), alignment: HorizontalAlignment.Center)
         ])));
@@ -100,6 +100,29 @@ public class ImageService
             new Column((p.Quantity * p.PricePerUnit).ToString("N0"), "ui/icon/065000/065002_hr1.tex"),
             new(p.World.Name),
             new Column(p.PurchasedAt.Humanize(true), alignment: HorizontalAlignment.Center)
+        ])));
+
+        return await BuildImage(imageData);
+    }
+
+    public async Task<FileAttachment> CreateListings(List<ListingEntity> listings)
+    {
+        var imageData = new ImageData("listings");
+        imageData.Rows.Add(new Row([
+            new("Item", string.Empty),
+            new("HQ", string.Empty, HorizontalAlignment.Center),
+            new("Qty", alignment: HorizontalAlignment.Center),
+            new("Total Gil", string.Empty),
+            new("Retainer"),
+            new("Updated", alignment: HorizontalAlignment.Center)
+        ]));
+        imageData.Rows.AddRange(listings.Select(l => new Row([
+            new(l.Item.Name, l.Item.IconPath),
+            new(string.Empty, l.IsHq ? "./Resources/hq.png" : string.Empty),
+            new(l.Quantity.ToString(), alignment: HorizontalAlignment.Center),
+            new Column((l.Quantity * l.PricePerUnit).ToString("N0"), "ui/icon/065000/065002_hr1.tex"),
+            new(l.RetainerName),
+            new Column(l.UpdatedAt.Humanize(true), alignment: HorizontalAlignment.Center)
         ])));
 
         return await BuildImage(imageData);

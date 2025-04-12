@@ -3,6 +3,7 @@ using Discord.Interactions;
 using Humanizer;
 using MarketMonitor.Bot.Services;
 using MarketMonitor.Database;
+using MarketMonitor.Database.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace MarketMonitor.Bot.Modules;
@@ -44,8 +45,32 @@ public class MarketModule(DatabaseContext db, ImageService imageService, CacheSe
         await FollowupWithFileAsync(await imageService.CreateRecentPurchases(purchases));
     }
 
+
+    [SlashCommand("listings", "Show your listings")]
+    public async Task ShowListings([Summary(description: "Hide command output")] bool ephemeral = true)
+    {
+        await DeferAsync(ephemeral);
+        var character = await GetVerifiedCharacterAsync();
+        if (character == null)
+        {
+            await SendErrorAsync($"You don't have a character.\nSetup one with {await GetCommand("character", "setup")}");
+            return;
+        }
+
+        var listings = await db.Listings
+            .Include(l => l.Item)
+            .Where(l => l.RetainerOwnerId == Context.User.Id && l.Flags == ListingFlags.None)
+            .OrderByDescending(l => l.UpdatedAt)
+            .Take(25).ToListAsync();
+        await FollowupWithFileAsync(await imageService.CreateListings(listings));
+    }
+
     [SlashCommand("balance", "Show your gil balance for a specific timeframe")]
-    public async Task BalanceGil([MinValue(1), Summary(description: "How many days to calculate")] int timeframe, [Summary(description: "Hide command output")] bool ephemeral = true)
+    public async Task BalanceGil(
+        [MinValue(1), Summary(description: "How many days to calculate")]
+        int timeframe,
+        [Summary(description: "Hide command output")]
+        bool ephemeral = true)
     {
         await DeferAsync(ephemeral);
         var character = await GetVerifiedCharacterAsync();
