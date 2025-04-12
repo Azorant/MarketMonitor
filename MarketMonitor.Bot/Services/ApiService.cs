@@ -110,7 +110,7 @@ public class ApiService(DatabaseContext db)
             await db.AddAsync(new ItemEntity
             {
                 Id = rawItem.Id,
-                Icon = rawItem.Fields.Icon.Path,
+                IconPath = rawItem.Fields.Icon.Path,
                 Name = rawItem.Fields.Name,
             });
             count++;

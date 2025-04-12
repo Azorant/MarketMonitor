@@ -8,5 +8,6 @@ public class ItemEntity
     [MaxLength(128)]
     public required string Name { get; set; }
     [MaxLength(256)]
-    public required string Icon {get; set;}
+    public required string IconPath {get; set;}
+    public byte[]? IconData { get; set; }
 }

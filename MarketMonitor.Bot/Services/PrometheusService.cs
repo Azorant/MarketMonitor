@@ -13,6 +13,7 @@ public class PrometheusService
     public Gauge TrackedRetainers { get; set; }
     public Gauge TrackedListings { get; set; }
     public Histogram JobExecuted { get; set; }
+    public Histogram ImageGenerationLatency { get; set; }
 
     public PrometheusService()
     {
@@ -27,6 +28,12 @@ public class PrometheusService
         {
             Buckets = Histogram.PowersOfTenDividedBuckets(0, 3, 12),
             LabelNames = ["job"],
+        });
+        
+        ImageGenerationLatency = Metrics.CreateHistogram("marketmonitor_image_generation_latency", "Duration of image gen", new HistogramConfiguration
+        {
+            Buckets = Histogram.PowersOfTenDividedBuckets(1, 4, 4),
+            LabelNames = ["type"],
         });
 
         Server = new MetricServer(3400);

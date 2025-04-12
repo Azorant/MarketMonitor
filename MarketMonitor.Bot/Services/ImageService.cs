@@ -1,7 +1,10 @@
-﻿using Discord;
+﻿using System.Diagnostics;
+using Discord;
 using Humanizer;
 using MarketMonitor.Bot.HostedServices;
+using MarketMonitor.Database;
 using MarketMonitor.Database.Entities;
+using Microsoft.EntityFrameworkCore;
 using SixLabors.Fonts;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Drawing;
@@ -31,8 +34,9 @@ public class Column(string text, string? icon = null, HorizontalAlignment alignm
     public HorizontalAlignment Alignment { get; set; } = alignment;
 }
 
-public class ImageData
+public class ImageData(string type)
 {
+    public string Type { get; set; } = type;
     public List<Row> Rows { get; set; } = new();
     public Row HighestRow => Rows.First(row => Math.Abs(row.Height - Rows.Max(r => r.Height)) < 1);
 }
@@ -41,9 +45,13 @@ public class ImageService
 {
     private Font LargeFont { get; set; }
     private Font NormalFont { get; set; }
+    private DatabaseContext Db { get; set; }
+    private PrometheusService Prometheus { get; set; }
 
-    public ImageService()
+    public ImageService(DatabaseContext db, PrometheusService prometheus)
     {
+        Db = db;
+        Prometheus = prometheus;
         var fontCollection = new FontCollection();
         fontCollection.AddSystemFonts();
         var family = fontCollection.Get("Open Sans");
@@ -53,7 +61,7 @@ public class ImageService
 
     public async Task<FileAttachment> CreateRecentSales(List<SaleEntity> sales)
     {
-        var imageData = new ImageData();
+        var imageData = new ImageData("sales");
 
         imageData.Rows.Add(new Row([
             new("Retainer"),
@@ -65,9 +73,9 @@ public class ImageService
         ]));
         imageData.Rows.AddRange(sales.Select(sale => new Row([
             new Column(sale.Listing.RetainerName),
-            new Column(sale.Listing.Item.Name, $"https://v2.xivapi.com/api/asset?path={sale.Listing.Item.Icon}&format=png"),
+            new Column(sale.Listing.Item.Name, sale.Listing.Item.IconPath),
             new Column(sale.Listing.Quantity.ToString(), alignment: HorizontalAlignment.Center),
-            new Column((sale.Listing.Quantity * sale.Listing.PricePerUnit).ToString("N0"), "https://v2.xivapi.com/api/asset?path=ui/icon/065000/065002_hr1.tex&format=png"),
+            new Column((sale.Listing.Quantity * sale.Listing.PricePerUnit).ToString("N0"), "ui/icon/065000/065002_hr1.tex"),
             new Column(sale.BuyerName),
             new Column(sale.BoughtAt.Humanize(true), alignment: HorizontalAlignment.Center)
         ])));
@@ -76,7 +84,7 @@ public class ImageService
 
     public async Task<FileAttachment> CreateRecentPurchases(List<PurchaseEntity> purchases)
     {
-        var imageData = new ImageData();
+        var imageData = new ImageData("purchases");
         imageData.Rows.Add(new Row([
             new("Item", string.Empty),
             new("HQ", string.Empty, HorizontalAlignment.Center),
@@ -86,10 +94,10 @@ public class ImageService
             new("Bought", alignment: HorizontalAlignment.Center)
         ]));
         imageData.Rows.AddRange(purchases.Select(p => new Row([
-            new(p.Item.Name, $"https://v2.xivapi.com/api/asset?path={p.Item.Icon}&format=png"),
+            new(p.Item.Name, p.Item.IconPath),
             new(string.Empty, p.IsHq ? "./Resources/hq.png" : string.Empty),
             new(p.Quantity.ToString(), alignment: HorizontalAlignment.Center),
-            new Column((p.Quantity * p.PricePerUnit).ToString("N0"), "https://v2.xivapi.com/api/asset?path=ui/icon/065000/065002_hr1.tex&format=png"),
+            new Column((p.Quantity * p.PricePerUnit).ToString("N0"), "ui/icon/065000/065002_hr1.tex"),
             new(p.World.Name),
             new Column(p.PurchasedAt.Humanize(true), alignment: HorizontalAlignment.Center)
         ])));
@@ -99,6 +107,8 @@ public class ImageService
 
     private async Task<FileAttachment> BuildImage(ImageData imageData)
     {
+        var timer = new Stopwatch();
+        timer.Start();
         using Image final = new Image<Bgra32>(1920, 1080);
         final.Mutate(x => x.Fill(Color.Black));
 
@@ -111,7 +121,7 @@ public class ImageService
             for (var colIndex = 0; colIndex < row.Columns.Count; colIndex++)
             {
                 var column = row.Columns[colIndex];
-                var extraPadding = column.HasIcon ? iconPadding : 0;
+                var extraPadding = column.Icon != null ? iconPadding : 0;
                 var measurement = TextMeasurer.MeasureSize(column.Text, new RichTextOptions(i == 0 ? LargeFont : NormalFont)
                 {
                     HorizontalAlignment = column.Alignment,
@@ -159,12 +169,33 @@ public class ImageService
                     }
                     else
                     {
-                        var httpResult = await httpClient.GetAsync(column.Icon);
-                        await using var resultStream = await httpResult.Content.ReadAsStreamAsync();
-                        icon = (await Image.LoadAsync(resultStream)).CloneAs<Bgra32>();
+                        var item = await Db.Items.FirstOrDefaultAsync(i => i.IconPath == column.Icon);
+                        MemoryStream? iconStream = null;
+                        if (item?.IconData == null)
+                        {
+                            var httpResult = await httpClient.GetAsync($"https://v2.xivapi.com/api/asset?path={column.Icon}&format=png");
+                            if (httpResult.IsSuccessStatusCode)
+                            {
+                                var bytes = await httpResult.Content.ReadAsByteArrayAsync();
+                                if (item != null)
+                                {
+                                    item.IconData = bytes;
+                                    Db.Update(item);
+                                    await Db.SaveChangesAsync();
+                                }
+
+                                iconStream = new MemoryStream(bytes);
+                            }
+                        }
+                        else
+                        {
+                            iconStream = new MemoryStream(item.IconData);
+                        }
+
+                        if (iconStream != null) icon = (await Image.LoadAsync(iconStream)).CloneAs<Bgra32>();
                     }
 
-                    imageCache.Add(column.Icon!, icon);
+                    if (icon != null) imageCache.Add(column.Icon!, icon);
                 }
 
                 float extraPadding = column.HasIcon ? iconPadding : 0;
@@ -200,12 +231,11 @@ public class ImageService
                     final.Mutate(c => c.DrawImage(icon, new Point((int)(x + offset), (int)y + 8), 1));
                 }
 
-                x += headerColumn.Width + xPadding / 1.5f;
+                x += headerColumn.Width + xPadding / 2;
             }
 
-            var heightDiff = row.Height - tallest;
-
-            y += (alignStart ? row.Height + basePadding : row.Height + yPadding) - (heightDiff >= basePadding ? heightDiff : 0);
+            var heightDiff = tallest - row.Height;
+            y += (alignStart ? row.Height + basePadding : row.Height + yPadding) + heightDiff;
             x = xPadding;
         }
 
@@ -219,6 +249,9 @@ public class ImageService
             };
             final.Mutate(c => c.DrawText(options, "No records", Color.White));
         }
+
+        timer.Stop();
+        Prometheus.ImageGenerationLatency.WithLabels(imageData.Type).Observe(timer.ElapsedMilliseconds);
 
         if (DiscordClientHost.IsDebug()) await final.SaveAsPngAsync("./tmp.png");
         Stream stream = new MemoryStream();
