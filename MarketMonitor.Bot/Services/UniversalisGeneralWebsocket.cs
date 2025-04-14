@@ -60,7 +60,7 @@ public class UniversalisGeneralWebsocket
                     {
                         var tracking = await cache.GetRetainer(retainerGroup.First().RetainerName);
                         if (!tracking) continue;
-                        BackgroundJob.Enqueue(() => job.HandleListingRemove(retainerGroup.Key, retainerGroup.Select(l => new RemovedListing(l.ListingId, l.LastReviewTime)).ToList()));
+                        BackgroundJob.Enqueue(() => job.HandleListingRemove(retainerGroup.Key, packet.World, retainerGroup.Select(l => new RemovedListing(l.ListingId, l.LastReviewTime)).ToList()));
                     }
 
                     break;

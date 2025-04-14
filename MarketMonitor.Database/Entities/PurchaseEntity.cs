@@ -13,7 +13,11 @@ public class PurchaseEntity
     public DateTime PurchasedAt { get; set; }
     public ulong CharacterId { get; set; }
     public int WorldId { get; set; }
-    
+
+    // Purchasing from market board always has 5% tax
+    [NotMapped]
+    public double Total => Math.Floor(Quantity * PricePerUnit * 1.05);
+
     public virtual ItemEntity Item { get; set; }
     public virtual WorldEntity World { get; set; }
     public virtual CharacterEntity Character { get; set; }

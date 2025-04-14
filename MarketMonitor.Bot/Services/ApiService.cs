@@ -10,7 +10,7 @@ using Serilog;
 
 namespace MarketMonitor.Bot.Services;
 
-public class ApiService(DatabaseContext db)
+public class ApiService(DatabaseContext db, CacheService cacheService)
 {
     public async Task<T> Request<T>(string url)
     {
@@ -133,4 +133,13 @@ public class ApiService(DatabaseContext db)
     public Task<MarketBoardDataResponse> FetchItem(int itemId, string region, int entries = 5, TimeSpan? entriesWithin = null) =>
         RequestUniversalis<MarketBoardDataResponse>(
             $"/{region}/{itemId}?entries={entries}{(entriesWithin == null ? string.Empty : $"&entriesWithin={entriesWithin.Value.TotalSeconds}")}");
+
+    public async Task<CityTaxRates> FetchTaxRate(int worldId)
+    {
+        var cached = await cacheService.GetTaxRate(worldId);
+        if (cached != null) return cached;
+        var response = await RequestUniversalis<CityTaxRates>($"/tax-rates?world={worldId}");
+        await cacheService.SetTaxRate(worldId, response);
+        return response;
+    }
 }

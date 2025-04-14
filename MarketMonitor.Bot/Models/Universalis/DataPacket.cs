@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using MarketMonitor.Database.Models;
+using Newtonsoft.Json;
 
 namespace MarketMonitor.Bot.Models.Universalis;
 
@@ -18,6 +19,7 @@ public class ListingData
     public int Quantity { get; set; }
     public bool Hq { get; set; }
     public string ListingId { get; set; }
+    public RetainerCity RetainerCity { get; set; }
     public string RetainerId { get; set; }
     public string RetainerName { get; set; }
     /// <summary>

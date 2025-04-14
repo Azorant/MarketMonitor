@@ -76,7 +76,7 @@ public class CacheService(ConnectionMultiplexer redis, DiscordSocketClient clien
     {
         var db = redis.GetDatabase();
         var key = BuildKey("market", itemId, datacenter, saleData.Timestamp, saleData.Quantity, saleData.PricePerUnit, saleData.Hq, saleData.BuyerName);
-        
+
         var value = await db.StringGetAsync(key);
         if (!value.IsNullOrEmpty)
         {
@@ -86,6 +86,19 @@ public class CacheService(ConnectionMultiplexer redis, DiscordSocketClient clien
 
         await db.StringSetAsync(key, true, TimeSpan.FromHours(12));
         return false;
+    }
+
+    public async Task<CityTaxRates?> GetTaxRate(int worldId)
+    {
+        var db = redis.GetDatabase();
+        var value = await db.StringGetAsync(BuildKey("tax", worldId));
+        return !value.IsNullOrEmpty ? JsonSerializer.Deserialize<CityTaxRates>(value!) : null;
+    }
+
+    public async Task SetTaxRate(int worldId, CityTaxRates obj)
+    {
+        var db = redis.GetDatabase();
+        await db.StringSetAsync(BuildKey("tax", worldId), JsonSerializer.Serialize(obj), expiry: obj.ResetsIn());
     }
 
     public async Task LoadApplicationEmotes()

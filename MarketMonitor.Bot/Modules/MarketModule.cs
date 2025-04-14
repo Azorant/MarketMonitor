@@ -83,12 +83,12 @@ public class MarketModule(DatabaseContext db, ImageService imageService, CacheSe
         var spent = await db.Purchases
             .Where(p => p.CharacterId == Context.User.Id &&
                         p.PurchasedAt >= DateTime.UtcNow.AddDays(-timeframe))
-            .SumAsync(p => p.Quantity * p.PricePerUnit);
+            .SumAsync(p => p.Quantity * p.PricePerUnit * 1.05);
 
         var sold = await db.Sales.Include(s => s.Listing)
             .Where(s => s.Listing.RetainerOwnerId == Context.User.Id &&
                         s.BoughtAt >= DateTime.UtcNow.AddDays(-timeframe))
-            .SumAsync(s => s.Listing.Quantity * s.Listing.PricePerUnit);
+            .SumAsync(s => s.Listing.Quantity * s.Listing.PricePerUnit * s.Listing.TaxRate);
 
         cacheService.Emotes.TryGetValue("gil", out var emote);
         var emoji = emote == null ? "" : $"{emote} ";

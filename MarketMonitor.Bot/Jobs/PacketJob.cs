@@ -21,7 +21,7 @@ public struct RemovedListing(string id, double timestamp)
 
 public class PacketJob(IServiceProvider serviceProvider)
 {
-    [TypeFilter(typeof(LogExecutionAttribute))]
+    [DisableConcurrentExecution("listing", 60), TypeFilter(typeof(LogExecutionAttribute))]
     public async Task HandleListingAdd(string retainerId, int itemId, int worldId, List<ListingData> listings)
     {
         await using var db = serviceProvider.GetRequiredService<DatabaseContext>();
@@ -30,6 +30,8 @@ public class PacketJob(IServiceProvider serviceProvider)
 
         var existingListings = await db.Listings.Where(l => listings.Select(e => e.ListingId).Contains(l.Id)).ToListAsync();
 
+        var apiService = serviceProvider.GetRequiredService<ApiService>();
+        var taxRates = await apiService.FetchTaxRate(worldId);
         foreach (var listing in listings)
         {
             var existing = existingListings.FirstOrDefault(l => l.Id == listing.ListingId);
@@ -45,7 +47,9 @@ public class PacketJob(IServiceProvider serviceProvider)
                     RetainerName = listing.RetainerName,
                     RetainerOwnerId = retainer.OwnerId,
                     WorldId = worldId,
-                    IsHq = listing.Hq
+                    IsHq = listing.Hq,
+                    TaxRate = 1 - taxRates.GetCityRate(listing.RetainerCity) / 100d,
+                    RetainerCity = listing.RetainerCity,
                 });
             }
             else
@@ -74,7 +78,8 @@ public class PacketJob(IServiceProvider serviceProvider)
                     continue;
                 if (updated)
                     existing.IsNotified = false;
-
+                
+                existing.TaxRate = 1 - taxRates.GetCityRate(listing.RetainerCity) / 100d;
                 existing.UpdatedAt = listing.LastReviewTime.ConvertTimestamp();
 
                 db.Update(existing);
@@ -84,8 +89,8 @@ public class PacketJob(IServiceProvider serviceProvider)
         await db.SaveChangesAsync();
     }
 
-    [TypeFilter(typeof(LogExecutionAttribute))]
-    public async Task HandleListingRemove(string retainerId, List<RemovedListing> removedListings)
+    [DisableConcurrentExecution("listing", 60), TypeFilter(typeof(LogExecutionAttribute))]
+    public async Task HandleListingRemove(string retainerId, int worldId, List<RemovedListing> removedListings)
     {
         await using var db = serviceProvider.GetRequiredService<DatabaseContext>();
         var retainer = await db.Retainers.AsNoTracking().FirstOrDefaultAsync(r => r.Id == retainerId);
@@ -93,10 +98,13 @@ public class PacketJob(IServiceProvider serviceProvider)
         var ids = removedListings.Select(l => l.Id).ToList();
         var listings = await db.Listings.Where(l => ids.Contains(l.Id) && !l.Flags.HasFlag(ListingFlags.Removed)).ToListAsync();
 
+        var apiService = serviceProvider.GetRequiredService<ApiService>();
+        var taxRates = await apiService.FetchTaxRate(worldId);
         foreach (var listing in listings)
         {
             listing.Flags = listing.Flags.AddFlag(ListingFlags.Removed);
             listing.UpdatedAt = removedListings.First(l => l.Id == listing.Id).Timestamp.ConvertTimestamp();
+            listing.TaxRate = 1 - taxRates.GetCityRate(listing.RetainerCity) / 100d;
             db.Update(listing);
         }
 
@@ -120,7 +128,7 @@ public class PacketJob(IServiceProvider serviceProvider)
         await db.SaveChangesAsync();
     }
 
-    [DisableConcurrentExecution("sales", 60)]
+    [DisableConcurrentExecution("sales", 60), TypeFilter(typeof(LogExecutionAttribute))]
     public async Task HandleSaleAdd(int itemId, int worldId, SaleData sale)
     {
         try
