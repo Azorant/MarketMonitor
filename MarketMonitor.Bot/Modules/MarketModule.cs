@@ -167,7 +167,7 @@ public class MarketModule(DatabaseContext db, ImageService imageService, CacheSe
     {
         if (sale == null)
         {
-            await SendErrorAsync("You have no sales left to verify.", "Whoa");
+            await SendErrorAsync("You have no sales left to verify.", "Whoa", true);
             return;
         }
 
@@ -180,7 +180,7 @@ public class MarketModule(DatabaseContext db, ImageService imageService, CacheSe
             .AddField("Total", $"{emote} {sale.Listing.Total:N0}", true)
             .AddField("Buyer", sale.BuyerName, true)
             .AddField("Bought At",
-                $"{TimestampTag.FormatFromDateTime(sale.BoughtAt, TimestampTagStyles.ShortDateTime)} ({TimestampTag.FormatFromDateTime(sale.BoughtAt, TimestampTagStyles.Relative)})",
+                $"{TimestampTag.FormatFromDateTime(sale.BoughtAt.SpecifyUtc(), TimestampTagStyles.ShortDateTime)} ({TimestampTag.FormatFromDateTime(sale.BoughtAt.SpecifyUtc(), TimestampTagStyles.Relative)})",
                 true)
             .AddField("Listing ID", sale.Listing.Id)
             .WithThumbnailUrl($"https://v2.xivapi.com/api/asset?path={sale.Listing.Item.IconPath}&format=png")

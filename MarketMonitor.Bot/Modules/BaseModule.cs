@@ -20,7 +20,7 @@ public class BaseModule(DatabaseContext db) : InteractionModuleBase<SocketIntera
         return db.Characters.FirstOrDefaultAsync(c => c.Id == Context.User.Id && c.IsVerified);
     }
 
-    internal async Task SendErrorAsync(string error, string title = "Error")
+    internal async Task SendErrorAsync(string error, string title = "Error", bool ephemeral = false)
     {
         var embed = new EmbedBuilder()
             .WithTitle($":warning: {title}")
@@ -30,11 +30,11 @@ public class BaseModule(DatabaseContext db) : InteractionModuleBase<SocketIntera
             .Build();
         if (Context.Interaction.HasResponded)
         {
-            await FollowupAsync(embed: embed);
+            await FollowupAsync(embed: embed, ephemeral: ephemeral);
         }
         else
         {
-            await RespondAsync(embed: embed);
+            await RespondAsync(embed: embed, ephemeral: ephemeral);
         }
     }
 

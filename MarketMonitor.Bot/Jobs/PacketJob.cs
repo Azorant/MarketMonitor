@@ -140,7 +140,7 @@ public class PacketJob(IServiceProvider serviceProvider)
                 .ToListAsync();
 
             ListingEntity? listingEntity = null;
-
+            SaleEntity? saleEntity = null;
             foreach (var listing in listings)
             {
                 var matches = listing.PricePerUnit == sale.PricePerUnit && sale.Hq == listing.IsHq && sale.Quantity == listing.Quantity;
@@ -150,12 +150,13 @@ public class PacketJob(IServiceProvider serviceProvider)
                 listingEntity = listing;
                 listing.Flags = listing.Flags.AddFlag(ListingFlags.Sold);
                 db.Update(listing);
-                await db.AddAsync(new SaleEntity
+                saleEntity = new SaleEntity
                 {
                     BuyerName = sale.BuyerName,
                     ListingId = listing.Id,
                     BoughtAt = sale.Timestamp.ConvertTimestamp()
-                });
+                };
+                await db.AddAsync(saleEntity);
                 await db.SaveChangesAsync();
                 break;
             }
@@ -174,6 +175,9 @@ public class PacketJob(IServiceProvider serviceProvider)
                     var item = await db.Items.FirstAsync(i => i.Id == itemId);
                     var cache = serviceProvider.GetRequiredService<CacheService>();
                     cache.Emotes.TryGetValue("gil", out var emote);
+                    var rowOne = new ActionRowBuilder()
+                        .AddComponent(new ButtonBuilder("Approve", $"sale:approve:{saleEntity!.Id}", ButtonStyle.Success).Build())
+                        .AddComponent(new ButtonBuilder("Reject", $"sale:reject:{saleEntity.Id}", ButtonStyle.Danger).Build());
                     await channel.SendMessageAsync(embed: new EmbedBuilder()
                         .WithTitle("Sale Notification")
                         .AddField("Item", item.Name, true)
@@ -181,6 +185,8 @@ public class PacketJob(IServiceProvider serviceProvider)
                         .AddField("Gil", $"{(emote != null ? $"{emote} " : "")}{listingEntity.Quantity * listingEntity.PricePerUnit:N0}", true)
                         .WithColor(Color.Green)
                         .WithTimestamp(sale.Timestamp.ConvertTimestamp())
+                        .Build(), components: new ComponentBuilder()
+                        .AddRow(rowOne)
                         .Build());
                 }
                 catch (Exception ex)
