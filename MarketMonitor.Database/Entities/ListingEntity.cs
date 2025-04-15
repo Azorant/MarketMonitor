@@ -14,7 +14,7 @@ public class ListingEntity
     public int Quantity { get; set; }
     public double TaxRate { get; set; } = 0.95;
     [NotMapped]
-    public double Total => Math.Floor((double)(Quantity * PricePerUnit)) * TaxRate;
+    public double Total => Math.Ceiling((double)(Quantity * PricePerUnit)) * TaxRate;
     public DateTime UpdatedAt { get; set; }
     public ListingFlags Flags { get; set; } = ListingFlags.None;
     public bool IsHq { get; set; }

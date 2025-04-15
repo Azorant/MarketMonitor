@@ -78,7 +78,7 @@ public class PacketJob(IServiceProvider serviceProvider)
                     continue;
                 if (updated)
                     existing.IsNotified = false;
-                
+
                 existing.TaxRate = 1 - taxRates.GetCityRate(listing.RetainerCity) / 100d;
                 existing.UpdatedAt = listing.LastReviewTime.ConvertTimestamp();
 
@@ -134,7 +134,10 @@ public class PacketJob(IServiceProvider serviceProvider)
         try
         {
             var db = serviceProvider.GetRequiredService<DatabaseContext>();
-            var listings = await db.Listings.Where(l => l.ItemId == itemId && l.WorldId == worldId && l.Flags == ListingFlags.Removed).ToListAsync();
+            var listings = await db.Listings
+                .Where(l => l.ItemId == itemId && l.WorldId == worldId && l.Flags == ListingFlags.Removed)
+                .OrderByDescending(l => l.UpdatedAt)
+                .ToListAsync();
 
             ListingEntity? listingEntity = null;
 
@@ -142,8 +145,8 @@ public class PacketJob(IServiceProvider serviceProvider)
             {
                 var matches = listing.PricePerUnit == sale.PricePerUnit && sale.Hq == listing.IsHq && sale.Quantity == listing.Quantity;
                 if (!matches) continue;
-                var diff = Math.Abs(sale.Timestamp.ConvertTimestamp().Subtract(listing.UpdatedAt).TotalSeconds);
-                if (diff > TimeSpan.FromHours(24).TotalSeconds) continue;
+                // var diff = Math.Abs(sale.Timestamp.ConvertTimestamp().Subtract(listing.UpdatedAt).TotalSeconds);
+                // if (diff > TimeSpan.FromHours(24).TotalSeconds) continue;
                 listingEntity = listing;
                 listing.Flags = listing.Flags.AddFlag(ListingFlags.Sold);
                 db.Update(listing);

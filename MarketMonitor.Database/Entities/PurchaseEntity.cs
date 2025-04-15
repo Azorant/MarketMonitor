@@ -16,7 +16,7 @@ public class PurchaseEntity
 
     // Purchasing from market board always has 5% tax
     [NotMapped]
-    public double Total => Math.Floor(Quantity * PricePerUnit * 1.05);
+    public double Total => Math.Ceiling(Quantity * PricePerUnit * 1.05);
 
     public virtual ItemEntity Item { get; set; }
     public virtual WorldEntity World { get; set; }

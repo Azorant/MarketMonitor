@@ -122,7 +122,8 @@ try
     RecurringJob.AddOrUpdate<StatusJob>("status", x => x.SetStatus(), "0,15,30,45 * * * * *");
     RecurringJob.AddOrUpdate<CacheJob>("listing_cache", x => x.PopulateListingCache(), "0,30 * * * * *");
     RecurringJob.AddOrUpdate<CacheJob>("character_cache", x => x.PopulateCharacterCache(), "*/15 * * * *");
-    RecurringJob.AddOrUpdate<MarketJob>("market", x => x.CheckListings(), "*/10 * * * *");
+    RecurringJob.AddOrUpdate<MarketJob>("market", x => x.UndercutCheck(), "*/10 * * * *");
+    RecurringJob.AddOrUpdate<MarketJob>("daily_listing", x => x.DailyListingCheck(), "0 0 * * *");
     RecurringJob.AddOrUpdate<HealthJob>("health", x => x.CheckHealth(), "0,15,30,45 * * * * *");
 
     host.Run();
