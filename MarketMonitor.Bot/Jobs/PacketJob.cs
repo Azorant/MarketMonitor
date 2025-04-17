@@ -176,8 +176,9 @@ public class PacketJob(IServiceProvider serviceProvider)
                     var cache = serviceProvider.GetRequiredService<CacheService>();
                     cache.Emotes.TryGetValue("gil", out var emote);
                     var rowOne = new ActionRowBuilder()
-                        .AddComponent(new ButtonBuilder("Approve", $"sale:approve:{saleEntity!.Id}", ButtonStyle.Success).Build())
-                        .AddComponent(new ButtonBuilder("Reject", $"sale:reject:{saleEntity.Id}", ButtonStyle.Danger).Build());
+                        .AddComponent(new ButtonBuilder("Approve", $"sale:approve:{saleEntity!.Id}:true", ButtonStyle.Success).Build())
+                        .AddComponent(new ButtonBuilder("Reject", $"sale:reject:{saleEntity.Id}:true", ButtonStyle.Danger).Build())
+                        .AddComponent(new ButtonBuilder("Edit Buyer", $"sale:edit:name:{saleEntity.Id}:true").Build());
                     await channel.SendMessageAsync(embed: new EmbedBuilder()
                         .WithTitle("Sale Notification")
                         .AddField("Item", item.Name, true)

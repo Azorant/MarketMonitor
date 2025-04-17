@@ -1,4 +1,5 @@
-﻿using Discord;
+﻿using System.ComponentModel;
+using Discord;
 using Discord.Interactions;
 using Humanizer;
 using MarketMonitor.Bot.Services;
@@ -118,41 +119,65 @@ public class MarketModule(DatabaseContext db, ImageService imageService, CacheSe
         await SendSaleVerification(await GetNextSale());
     }
 
-    [ComponentInteraction("sale:approve:*", true)]
-    public async Task ApproveSaleButton(int saleId)
+    [ComponentInteraction("sale:approve:*:*", true)]
+    public async Task ApproveSaleButton(int saleId, bool fromSale)
     {
-        await DeferAsync(true);
+        await DeferAsync();
+
         var sale = await db.Sales.Include(s => s.Listing).ThenInclude(l => l.Item).FirstOrDefaultAsync(s => s.Id == saleId && s.Listing.RetainerOwnerId == Context.User.Id);
         if (sale == null) return;
         sale.Listing.Flags = sale.Listing.Flags.AddFlag(ListingFlags.Confirmed);
         db.Update(sale.Listing);
         await db.SaveChangesAsync();
-        await SendSaleVerification(await GetNextSale(), 0);
+        if (fromSale)
+        {
+            await ModifyOriginalResponseAsync(m => { m.Components = new ComponentBuilder().Build(); });
+            await FollowupAsync(embed: new EmbedBuilder()
+                .WithTitle("Sale approved")
+                .WithColor(Color.Green)
+                .Build(), ephemeral: true);
+        }
+        else
+        {
+            await SendSaleVerification(await GetNextSale(), 0);
+        }
     }
 
-    [ComponentInteraction("sale:reject:*", true)]
-    public async Task RejectSaleButton(int saleId)
+    [ComponentInteraction("sale:reject:*:*", true)]
+    public async Task RejectSaleButton(int saleId, bool fromSale)
     {
-        await DeferAsync(true);
+        await DeferAsync();
         var sale = await db.Sales.Include(s => s.Listing).ThenInclude(l => l.Item).FirstOrDefaultAsync(s => s.Id == saleId && s.Listing.RetainerOwnerId == Context.User.Id);
         if (sale == null) return;
         sale.Listing.Flags = sale.Listing.Flags.RemoveFlag(ListingFlags.Sold);
         db.Update(sale.Listing);
         db.Remove(sale);
         await db.SaveChangesAsync();
-        await SendSaleVerification(await GetNextSale(), 1);
+        if (fromSale)
+        {
+            await ModifyOriginalResponseAsync(m => { m.Components = new ComponentBuilder().Build(); });
+            await FollowupAsync(embed: new EmbedBuilder()
+                .WithTitle("Sale rejected")
+                .WithColor(Color.Red)
+                .Build(), ephemeral: true);
+        }
+        else
+        {
+            await SendSaleVerification(await GetNextSale(), 1);
+        }
     }
 
-    [ComponentInteraction("sale:edit:name:*", true)]
-    public async Task EditBuyerNameButton(int saleId)
+    [ComponentInteraction("sale:edit:name:*:*", true)]
+    public async Task EditBuyerNameButton(int saleId, bool fromSale)
     {
         var sale = await db.Sales.Include(s => s.Listing).ThenInclude(l => l.Item).FirstOrDefaultAsync(s => s.Id == saleId && s.Listing.RetainerOwnerId == Context.User.Id);
         if (sale == null) return;
-        await RespondWithModalAsync<BuyerNameModal>($"edit:name:modal:{sale.Id}", modifyModal: options => options.UpdateTextInput("name", input => input.Value = sale.BuyerName));
+        await RespondWithModalAsync<BuyerNameModal>($"edit:name:modal:{sale.Id}:{fromSale}",
+            modifyModal: options => options.UpdateTextInput("name", input => input.Value = sale.BuyerName));
     }
 
-    [ModalInteraction("edit:name:modal:*", true)]
-    public async Task EditBuyerNameModal(int saleId, BuyerNameModal modal)
+    [ModalInteraction("edit:name:modal:*:*", true)]
+    public async Task EditBuyerNameModal(int saleId, bool fromSale, BuyerNameModal modal)
     {
         await DeferAsync(true);
         var sale = await db.Sales.Include(s => s.Listing).ThenInclude(l => l.Item).FirstOrDefaultAsync(s => s.Id == saleId && s.Listing.RetainerOwnerId == Context.User.Id);
@@ -160,7 +185,31 @@ public class MarketModule(DatabaseContext db, ImageService imageService, CacheSe
         sale.BuyerName = modal.Name;
         db.Update(sale);
         await db.SaveChangesAsync();
-        await SendSaleVerification(sale);
+        if (fromSale)
+        {
+            cacheService.Emotes.TryGetValue("gil", out var emote);
+            await ModifyOriginalResponseAsync(m =>
+            {
+                m.Embed = new EmbedBuilder()
+                    .WithTitle("Sale Notification")
+                    .AddField("Item", sale.Listing.Item.Name, true)
+                    .AddField("Buyer", sale.BuyerName, true)
+                    .AddField("Gil", $"{(emote != null ? $"{emote} " : "")}{sale.Listing.Quantity * sale.Listing.PricePerUnit:N0}", true)
+                    .WithColor(Color.Green)
+                    .WithTimestamp(sale.BoughtAt.SpecifyUtc())
+                    .Build();
+                m.Components = new ComponentBuilder()
+                    .AddRow(new ActionRowBuilder()
+                        .AddComponent(new ButtonBuilder("Approve", $"sale:approve:{sale!.Id}:true", ButtonStyle.Success).Build())
+                        .AddComponent(new ButtonBuilder("Reject", $"sale:reject:{sale.Id}:true", ButtonStyle.Danger).Build())
+                        .AddComponent(new ButtonBuilder("Edit Buyer", $"sale:edit:name:{sale.Id}:true").Build()))
+                    .Build();
+            });
+        }
+        else
+        {
+            await SendSaleVerification(sale);
+        }
     }
 
     private async Task SendSaleVerification(SaleEntity? sale, int previous = -1)
@@ -188,8 +237,8 @@ public class MarketModule(DatabaseContext db, ImageService imageService, CacheSe
             .Build();
 
         var rowOne = new ActionRowBuilder()
-            .AddComponent(new ButtonBuilder("Approve", $"sale:approve:{sale.Id}", ButtonStyle.Success).Build())
-            .AddComponent(new ButtonBuilder("Reject", $"sale:reject:{sale.Id}", ButtonStyle.Danger).Build());
+            .AddComponent(new ButtonBuilder("Approve", $"sale:approve:{sale.Id}:false", ButtonStyle.Success).Build())
+            .AddComponent(new ButtonBuilder("Reject", $"sale:reject:{sale.Id}:false", ButtonStyle.Danger).Build());
         var rowTwo = new ActionRowBuilder()
             .AddComponent(new ButtonBuilder("Edit Buyer", $"sale:edit:name:{sale.Id}").Build());
 
