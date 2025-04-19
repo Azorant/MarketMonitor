@@ -25,8 +25,13 @@ public class PacketJob(IServiceProvider serviceProvider)
     public async Task HandleListingAdd(string retainerId, int itemId, int worldId, List<ListingData> listings)
     {
         await using var db = serviceProvider.GetRequiredService<DatabaseContext>();
-        var retainer = await db.Retainers.AsNoTracking().FirstOrDefaultAsync(r => r.Id == retainerId);
+        var retainer = await db.Retainers.AsNoTracking().FirstOrDefaultAsync(r => r.Id == retainerId || (r.Name == listings.First().RetainerName && string.IsNullOrEmpty(r.Id)));
         if (retainer == null) return;
+        if (string.IsNullOrEmpty(retainer.Id))
+        {
+            retainer.Id = retainerId;
+            db.Update(retainer);
+        }
 
         var existingListings = await db.Listings.Where(l => listings.Select(e => e.ListingId).Contains(l.Id)).ToListAsync();
 
