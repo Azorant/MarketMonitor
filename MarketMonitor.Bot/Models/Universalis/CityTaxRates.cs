@@ -45,12 +45,14 @@ public class CityTaxRates
     public TimeSpan ResetsIn()
     {
         var now = DateTime.UtcNow;
-        return now
+        var time = now
             .AddDays(((int)DayOfWeek.Saturday - (int)DateTime.UtcNow.DayOfWeek + 7) % 7)
             .AddHours(8 - now.Hour)
             .AddMinutes(-now.Minute)
             .AddSeconds(-now.Second)
             .AddMilliseconds(-now.Millisecond)
             .Subtract(now);
+        if (time.TotalSeconds < 0) time = time.Add(TimeSpan.FromDays(7)); // Only happens on saturday
+        return time;
     }
 }
