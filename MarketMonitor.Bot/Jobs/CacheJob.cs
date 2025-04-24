@@ -9,7 +9,6 @@ namespace MarketMonitor.Bot.Jobs;
 
 public class CacheJob(DatabaseContext db, CacheService cache, PrometheusService stats)
 {
-    [TypeFilter(typeof(LogExecutionAttribute))]
     public async Task<(int, int)> PopulateCharacterCache()
     {
         var characterCount = 0;
@@ -66,5 +65,12 @@ public class CacheJob(DatabaseContext db, CacheService cache, PrometheusService 
         {
             Log.Error(e, "Error populating listing cache");
         }
+    }
+
+    [TypeFilter(typeof(LogExecutionAttribute))]
+    public async Task PopulateAll()
+    {
+        await PopulateListingCache();
+        await PopulateCharacterCache();
     }
 }

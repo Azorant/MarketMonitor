@@ -16,6 +16,11 @@ using MarketMonitor.Bot.Jobs;
 using MarketMonitor.Bot.Services;
 using MarketMonitor.Startup;
 using MarketMonitor.Website.Components;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Http;
+using Polly;
+using Polly.CircuitBreaker;
+using Polly.RateLimit;
 
 try
 {
@@ -37,6 +42,46 @@ try
         .AddDbContext<DatabaseContext>(options => DatabaseContextFactory.CreateDbOptions(options), ServiceLifetime.Transient)
         .AddSingleton(ConnectionMultiplexer.Connect(redisConfiguration))
         .AddSerilog();
+
+    #endregion
+
+    #region Polly
+
+    HttpStatusCode[] httpStatusCodesWorthRetrying =
+    {
+        HttpStatusCode.RequestTimeout, HttpStatusCode.InternalServerError, HttpStatusCode.BadGateway, HttpStatusCode.ServiceUnavailable,
+        HttpStatusCode.GatewayTimeout
+    };
+
+    var httpThrottledPolicy = Policy
+        .Handle<RateLimitRejectedException>()
+        .OrResult<HttpResponseMessage>(r => httpStatusCodesWorthRetrying.Contains(r.StatusCode))
+        .CircuitBreakerAsync(1, TimeSpan.FromSeconds(0),
+            onBreak: (_, _, _, _) => { },
+            onReset: _ => { },
+            onHalfOpen: () => { });
+    CancellationTokenSource httpThrottlingEndSignal;
+    var httpRetryPolicy = Policy
+        .Handle<RateLimitRejectedException>()
+        .OrResult<HttpResponseMessage>(r => httpStatusCodesWorthRetrying.Contains(r.StatusCode))
+        .Or<BrokenCircuitException>()
+        .WaitAndRetryForeverAsync(_ => TimeSpan.FromSeconds(3),
+            onRetry: (dr, _) =>
+            {
+                if (dr.Exception is not RateLimitRejectedException dse) return;
+                httpThrottledPolicy.Isolate();
+                httpThrottlingEndSignal = new CancellationTokenSource(dse.RetryAfter);
+                httpThrottlingEndSignal.Token.Register(() => httpThrottledPolicy.Reset());
+            });
+    /*
+     From Universalis docs: There is a rate limit of 25 req/s (50 req/s burst) on the API
+     Could probably make the timespan 1 second, but we don't really need that throughput so 10 seconds should be good
+     */
+    var httpRatelimit = Policy.RateLimitAsync<HttpResponseMessage>(25, TimeSpan.FromSeconds(10), 50);
+
+    builder.Services.AddHttpClient("Universalis")
+        .AddPolicyHandler(Policy.WrapAsync(httpRetryPolicy, httpThrottledPolicy, httpRatelimit));
+    builder.Services.RemoveAll<IHttpMessageHandlerBuilderFilter>();
 
     #endregion
 
@@ -120,8 +165,7 @@ try
     }
 
     RecurringJob.AddOrUpdate<StatusJob>("status", x => x.SetStatus(), "0,15,30,45 * * * * *");
-    RecurringJob.AddOrUpdate<CacheJob>("listing_cache", x => x.PopulateListingCache(), "0,30 * * * * *");
-    RecurringJob.AddOrUpdate<CacheJob>("character_cache", x => x.PopulateCharacterCache(), "*/15 * * * *");
+    RecurringJob.AddOrUpdate<CacheJob>("cache", x => x.PopulateAll(), "0,30 * * * * *");
     RecurringJob.AddOrUpdate<MarketJob>("market", x => x.UndercutCheck(), "*/10 * * * *");
     RecurringJob.AddOrUpdate<MarketJob>("daily_listing", x => x.DailyListingCheck(), "0 0 * * *");
     RecurringJob.AddOrUpdate<HealthJob>("health", x => x.CheckHealth(), "0,15,30,45 * * * * *");

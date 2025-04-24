@@ -10,11 +10,11 @@ using Serilog;
 
 namespace MarketMonitor.Bot.Services;
 
-public class ApiService(DatabaseContext db, CacheService cacheService)
+public class ApiService(DatabaseContext db, CacheService cacheService, IHttpClientFactory httpFactory)
 {
     public async Task<T> Request<T>(string url)
     {
-        var client = new HttpClient();
+        var client = httpFactory.CreateClient("Universalis");
         client.DefaultRequestHeaders.Add("User-Agent", "MarketMonitor");
         HttpResponseMessage response = await client.GetAsync(new Uri(url));
         response.EnsureSuccessStatusCode();

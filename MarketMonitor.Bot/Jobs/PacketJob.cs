@@ -138,7 +138,7 @@ public class PacketJob(IServiceProvider serviceProvider)
     {
         try
         {
-            var db = serviceProvider.GetRequiredService<DatabaseContext>();
+            await using var db = serviceProvider.GetRequiredService<DatabaseContext>();
             var listings = await db.Listings
                 .Where(l => l.ItemId == itemId && l.WorldId == worldId && l.Flags == ListingFlags.Removed)
                 .OrderByDescending(l => l.UpdatedAt)
