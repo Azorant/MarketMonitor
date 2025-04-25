@@ -13,10 +13,12 @@ using Serilog;
 
 namespace MarketMonitor.Bot.Jobs;
 
-public struct RemovedListing(string id, double timestamp)
+public struct RemovedListing(string id, double timestamp, int quantity, int ppu)
 {
     public string Id { get; set; } = id;
     public double Timestamp { get; set; } = timestamp;
+    public int Quantity { get; set; } = quantity;
+    public int PricePerUnit { get; set; } = ppu;
 }
 
 public class PacketJob(IServiceProvider serviceProvider)
@@ -107,8 +109,11 @@ public class PacketJob(IServiceProvider serviceProvider)
         var taxRates = await apiService.FetchTaxRate(worldId);
         foreach (var listing in listings)
         {
+            var found = removedListings.Find( l => l.Id == listing.Id);
+            listing.Quantity = found.Quantity;
+            listing.PricePerUnit = found.PricePerUnit;
             listing.Flags = listing.Flags.AddFlag(ListingFlags.Removed);
-            listing.UpdatedAt = removedListings.First(l => l.Id == listing.Id).Timestamp.ConvertTimestamp();
+            listing.UpdatedAt = found.Timestamp.ConvertTimestamp();
             listing.TaxRate = 1 - taxRates.GetCityRate(listing.RetainerCity) / 100d;
             db.Update(listing);
         }

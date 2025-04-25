@@ -60,7 +60,8 @@ public class UniversalisGeneralWebsocket
                     {
                         var tracking = await cache.GetRetainer(retainerGroup.First().RetainerName);
                         if (!tracking) continue;
-                        BackgroundJob.Enqueue(() => job.HandleListingRemove(retainerGroup.Key, packet.World, retainerGroup.Select(l => new RemovedListing(l.ListingId, l.LastReviewTime)).ToList()));
+                        BackgroundJob.Enqueue(() => job.HandleListingRemove(retainerGroup.Key, packet.World,
+                            retainerGroup.Select(l => new RemovedListing(l.ListingId, l.LastReviewTime, l.Quantity, l.PricePerUnit)).ToList()));
                     }
 
                     break;
@@ -83,7 +84,7 @@ public class UniversalisGeneralWebsocket
                     {
                         BackgroundJob.Schedule(() => job.HandleSaleAdd(packet.Item, packet.World, sale), TimeSpan.FromMinutes(5));
                     }
-                    
+
                     break;
                 }
             }
