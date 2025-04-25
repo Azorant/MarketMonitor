@@ -22,7 +22,7 @@ public class LogExecutionAttribute(PrometheusService stats) : JobFilterAttribute
             nameof(PacketJob.HandleSaleAdd) => "sale/add",
             nameof(HealthJob.CheckHealth) => "health",
             nameof(MarketJob.UndercutCheck) => "market/undercut",
-            nameof(MarketJob.DailyListingCheck) => "market/daily",
+            nameof(MarketJob.ListingCheck) => "market/check",
             nameof(StatusJob.SetStatus) => "status",
             _ => context.BackgroundJob.Job.Method.Name
         };

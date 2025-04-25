@@ -167,7 +167,7 @@ try
     RecurringJob.AddOrUpdate<StatusJob>("status", x => x.SetStatus(), "0,15,30,45 * * * * *");
     RecurringJob.AddOrUpdate<CacheJob>("cache", x => x.PopulateAll(), "0,30 * * * * *");
     RecurringJob.AddOrUpdate<MarketJob>("market", x => x.UndercutCheck(), "*/10 * * * *");
-    RecurringJob.AddOrUpdate<MarketJob>("daily_listing", x => x.DailyListingCheck(), "0 0 * * *");
+    RecurringJob.AddOrUpdate<MarketJob>("listing_check", x => x.ListingCheck(), "0 */4 * * *");
     RecurringJob.AddOrUpdate<HealthJob>("health", x => x.CheckHealth(), "0,15,30,45 * * * * *");
 
     host.Run();

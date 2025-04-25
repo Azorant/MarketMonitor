@@ -104,7 +104,7 @@ public class MarketJob(DatabaseContext db, ApiService api, DiscordSocketClient c
     }
 
     [TypeFilter(typeof(LogExecutionAttribute))]
-    public async Task DailyListingCheck()
+    public async Task ListingCheck()
     {
         var listingGroups = await db.Listings
             .Include(l => l.World)
