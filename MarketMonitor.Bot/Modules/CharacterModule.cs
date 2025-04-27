@@ -136,5 +136,22 @@ public class CharacterModule(DatabaseContext db, LodestoneService lodestone, Cac
             await db.SaveChangesAsync();
             await SendSuccessAsync($"You will {(enabled ? "now" : "no longer")} get sale notifications.");
         }
+        
+        [SlashCommand("undercut", "Enable or disable undercut notifications")]
+        public async Task SetUndercutNotification(bool enabled)
+        {
+            await DeferAsync(true);
+            var character = await GetVerifiedCharacterAsync();
+            if (character == null)
+            {
+                await SendErrorAsync($"You don't have a character.\nSetup one with {await GetCommand("character", "setup")}");
+                return;
+            }
+            
+            character.UndercutNotification = enabled;
+            db.Update(character);
+            await db.SaveChangesAsync();
+            await SendSuccessAsync($"You will {(enabled ? "now" : "no longer")} get undercut notifications.");
+        }
     }
 }

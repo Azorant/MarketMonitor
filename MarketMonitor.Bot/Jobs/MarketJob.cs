@@ -23,7 +23,7 @@ public class MarketJob(DatabaseContext db, ApiService api, DiscordSocketClient c
             .Include(l => l.Item)
             .Include(l => l.Retainer)
             .ThenInclude(r => r.Owner)
-            .Where(l => l.Flags == ListingFlags.None)
+            .Where(l => l.Flags == ListingFlags.None && l.Retainer.Owner.UndercutNotification)
             .GroupBy(l => l.ItemId).ToListAsync();
 
         var notifications = new Dictionary<ulong, Dictionary<string, List<string>>>();

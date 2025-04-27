@@ -22,6 +22,7 @@ public class CharacterEntity
     public string DatacenterName { get; set; }
     public int? NotificationRegionId { get; set; }
     public bool SaleNotification { get; set; }
+    public bool UndercutNotification { get; set; }
     
     public virtual DatacenterEntity Datacenter { get; set; }
     public virtual WorldEntity? NotificationRegion { get; set; }
