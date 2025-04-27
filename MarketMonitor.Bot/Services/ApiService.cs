@@ -118,6 +118,7 @@ public class ApiService(DatabaseContext db, CacheService cacheService, IHttpClie
             if (count % Math.Floor((double)(itemResponses.Count / 10)) == 0)
             {
                 statusEmbed.Fields.Last().Value = $"Updating\n{itemResponses.Count:N0} items fetched\n{count:N0} items added";
+                await db.SaveChangesAsync();
                 await context.Interaction.ModifyOriginalResponseAsync(m => m.Embed = statusEmbed.Build());
             }
         }
