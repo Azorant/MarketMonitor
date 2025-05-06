@@ -13,12 +13,14 @@ using Serilog;
 
 namespace MarketMonitor.Bot.Jobs;
 
-public struct RemovedListing(string id, double timestamp, int quantity, int ppu)
+public struct RemovedListing(string id, double timestamp, int quantity, int ppu, string retainerName)
 {
     public string Id { get; set; } = id;
     public double Timestamp { get; set; } = timestamp;
     public int Quantity { get; set; } = quantity;
     public int PricePerUnit { get; set; } = ppu;
+    public string RetainerName { get; set; } = retainerName;
+    public string Key() => $"{Id}-{RetainerName}";
 }
 
 public class PacketJob(IServiceProvider serviceProvider)
@@ -35,13 +37,13 @@ public class PacketJob(IServiceProvider serviceProvider)
             db.Update(retainer);
         }
 
-        var existingListings = await db.Listings.Where(l => listings.Select(e => e.ListingId).Contains(l.Id)).ToListAsync();
+        var existingListings = await db.Listings.Where(l => listings.Select(e => e.Key()).Contains($"{l.Id}-{l.RetainerName}")).ToListAsync();
 
         var apiService = serviceProvider.GetRequiredService<ApiService>();
         var taxRates = await apiService.FetchTaxRate(worldId);
         foreach (var listing in listings)
         {
-            var existing = existingListings.FirstOrDefault(l => l.Id == listing.ListingId);
+            var existing = existingListings.FirstOrDefault(l => l.Key() == listing.Key());
             if (existing == null)
             {
                 await db.AddAsync(new ListingEntity
@@ -102,14 +104,14 @@ public class PacketJob(IServiceProvider serviceProvider)
         await using var db = serviceProvider.GetRequiredService<DatabaseContext>();
         var retainer = await db.Retainers.AsNoTracking().FirstOrDefaultAsync(r => r.Id == retainerId);
         if (retainer == null) return;
-        var ids = removedListings.Select(l => l.Id).ToList();
-        var listings = await db.Listings.Where(l => ids.Contains(l.Id) && !l.Flags.HasFlag(ListingFlags.Removed)).ToListAsync();
+        var ids = removedListings.Select(l => l.Key()).ToList();
+        var listings = await db.Listings.Where(l => ids.Contains($"{l.Id}-{l.RetainerName}") && !l.Flags.HasFlag(ListingFlags.Removed)).ToListAsync();
 
         var apiService = serviceProvider.GetRequiredService<ApiService>();
         var taxRates = await apiService.FetchTaxRate(worldId);
         foreach (var listing in listings)
         {
-            var found = removedListings.Find( l => l.Id == listing.Id);
+            var found = removedListings.Find( l => l.Key() == listing.Key());
             listing.Quantity = found.Quantity;
             listing.PricePerUnit = found.PricePerUnit;
             listing.Flags = listing.Flags.AddFlag(ListingFlags.Removed);
@@ -164,6 +166,7 @@ public class PacketJob(IServiceProvider serviceProvider)
                 {
                     BuyerName = sale.BuyerName,
                     ListingId = listing.Id,
+                    ListingRetainerName = listing.RetainerName,
                     BoughtAt = sale.Timestamp.ConvertTimestamp()
                 };
                 await db.AddAsync(saleEntity);

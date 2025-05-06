@@ -26,4 +26,5 @@ public class ListingEntity
     public bool IsNotified { get; set; }
     public virtual RetainerEntity Retainer { get; set; } = null!;
     public virtual WorldEntity World { get; set; } = null!;
+    public string Key() => $"{Id}-{RetainerName}";
 }

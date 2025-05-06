@@ -41,7 +41,7 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : DbCont
             .HasAlternateKey(c => c.Name);
 
         modelBuilder.Entity<ListingEntity>()
-            .HasKey(l => l.Id);
+            .HasKey(l => new { l.Id, l.RetainerName });
 
         modelBuilder.Entity<ItemEntity>()
             .HasKey(i => i.Id);

@@ -125,7 +125,7 @@ public class MarketJob(DatabaseContext db, ApiService api, DiscordSocketClient c
                 // Check for stale listings 
                 foreach (var listing in dcGroup)
                 {
-                    var matchingListing = market.Listings.FirstOrDefault(l => l.ListingId == listing.Id);
+                    var matchingListing = market.Listings.FirstOrDefault(l => l.Key() == listing.Key());
                     // Has matching listing meaning still on market
                     if (matchingListing != null)
                     {
@@ -142,22 +142,22 @@ public class MarketJob(DatabaseContext db, ApiService api, DiscordSocketClient c
                     else
                     {
                         SaleData? matchingSale = null;
-                        while (matchingSale == null || market.RecentHistory.Count > 0)
+
+                        var matches = market.RecentHistory.OrderByDescending(h => h.Timestamp).Where(h =>
+                            h.PricePerUnit == listing.PricePerUnit &&
+                            h.Quantity == listing.Quantity &&
+                            h.WorldId == listing.WorldId &&
+                            h.Hq == listing.IsHq
+                        ).ToList();
+
+                        foreach (var match in matches)
                         {
-                            var match = market.RecentHistory.OrderByDescending(h => h.Timestamp).FirstOrDefault(h =>
-                                h.PricePerUnit == listing.PricePerUnit &&
-                                h.Quantity == listing.Quantity &&
-                                h.WorldId == listing.WorldId &&
-                                h.Hq == listing.IsHq
-                            );
-                            if (match == null) break;
-
                             var alreadyHandled = await cacheService.MarketSaleCache(itemId, dcGroup.Key, match);
-                            if (!alreadyHandled) matchingSale = match;
-
-                            market.RecentHistory.Remove(match);
+                            if (alreadyHandled) continue;
+                            matchingSale = match;
+                            break;
                         }
-
+                        
                         // Mark listing as removed
                         listing.Flags = listing.Flags.AddFlag(ListingFlags.Removed);
                         listing.UpdatedAt = DateTime.UtcNow;
@@ -171,6 +171,7 @@ public class MarketJob(DatabaseContext db, ApiService api, DiscordSocketClient c
                 }
             }
         }
+
         await db.SaveChangesAsync();
     }
 }

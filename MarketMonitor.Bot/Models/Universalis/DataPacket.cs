@@ -26,6 +26,8 @@ public class ListingData
     /// Not present when data from ws
     /// </summary>
     public int? WorldId { get; set; }
+
+    public string Key() => $"{ListingId}-{RetainerName}";
 }
 
 public class SaleData
