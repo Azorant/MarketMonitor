@@ -10,6 +10,7 @@ namespace MarketMonitor.Database.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.Sql("SET FOREIGN_KEY_CHECKS=0;");
             migrationBuilder.DropForeignKey(
                 name: "FK_Sales_Listings_ListingId",
                 table: "Sales");
@@ -47,6 +48,7 @@ namespace MarketMonitor.Database.Migrations
                 principalTable: "Listings",
                 principalColumns: new[] { "Id", "RetainerName" },
                 onDelete: ReferentialAction.Cascade);
+            migrationBuilder.Sql("SET FOREIGN_KEY_CHECKS=1;");
         }
 
         /// <inheritdoc />
