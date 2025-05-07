@@ -104,14 +104,14 @@ public class PacketJob(IServiceProvider serviceProvider)
         await using var db = serviceProvider.GetRequiredService<DatabaseContext>();
         var retainer = await db.Retainers.AsNoTracking().FirstOrDefaultAsync(r => r.Id == retainerId);
         if (retainer == null) return;
-        var ids = removedListings.Select(l => l.Key()).ToList();
-        var listings = await db.Listings.Where(l => ids.Contains($"{l.Id}-{l.RetainerName}") && !l.Flags.HasFlag(ListingFlags.Removed)).ToListAsync();
+        var ids = removedListings.Select(l => new { l.Id, l.RetainerName }).ToList();
+        var listings = await db.Listings.Where(l => ids.Contains(new { l.Id, l.RetainerName }) && !l.Flags.HasFlag(ListingFlags.Removed)).ToListAsync();
 
         var apiService = serviceProvider.GetRequiredService<ApiService>();
         var taxRates = await apiService.FetchTaxRate(worldId);
         foreach (var listing in listings)
         {
-            var found = removedListings.Find( l => l.Key() == listing.Key());
+            var found = removedListings.Find(l => l.Key() == listing.Key());
             listing.Quantity = found.Quantity;
             listing.PricePerUnit = found.PricePerUnit;
             listing.Flags = listing.Flags.AddFlag(ListingFlags.Removed);
